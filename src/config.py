@@ -20,14 +20,18 @@ VALID_GT_PATH = PROCESSED_DIR / "valid_gt.parquet"
 VALID_DATASET_LABELS_PATH = PROCESSED_DIR / "valid_dataset_labels.parquet"
 VALID_FEATURES_PATH = PROCESSED_DIR / "valid_features.parquet"
 VALID_MODEL_READY_PATH = PROCESSED_DIR / "valid_model_ready.parquet"
+FINAL_CANDIDATES_PATH = PROCESSED_DIR / "final_candidates.parquet"
+FINAL_FEATURES_PATH = PROCESSED_DIR / "final_features.parquet"
+FINAL_MODEL_READY_PATH = PROCESSED_DIR / "final_model_ready.parquet"
 
 MODEL_PATH = MODEL_DIR / "lgbm_baseline.pkl"
 FEATURE_COLUMNS_PATH = MODEL_DIR / "feature_columns.pkl"
 IMPORTANCE_PATH = OUTPUT_DIR / "feature_importance.csv"
+SUBMISSION_PATH = OUTPUT_DIR / "submission.pkl"
 
-TRAIN_HISTORY_MONTHS = (1, 12)
-TRAIN_LABEL_MONTH = 12
-VALID_HISTORY_MONTHS = (1, 12)
+TRAIN_HISTORY_MONTHS = (1, 10)
+TRAIN_LABEL_MONTH = 11
+VALID_HISTORY_MONTHS = (1, 11)
 VALID_LABEL_MONTH = 12  # giữ giống notebook gốc
 FINAL_HISTORY_MONTHS = (1, 12)
 

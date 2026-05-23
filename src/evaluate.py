@@ -2,17 +2,28 @@ import joblib
 import pandas as pd
 
 
-def predict_valid(valid_model_path, model_path, feature_columns_path=None):
-    valid_df = pd.read_parquet(valid_model_path)
-    X_valid = valid_df.drop(columns=["customer_id", "item_id", "target"])
+def predict_matrix(model_ready_path, model_path, feature_columns_path=None, id_cols=None):
+    df = pd.read_parquet(model_ready_path)
+    id_cols = ["customer_id", "item_id", "target"] if id_cols is None else id_cols
+    drop_cols = [c for c in id_cols if c in df.columns]
+    X = df.drop(columns=drop_cols)
 
     if feature_columns_path is not None:
         feature_cols = joblib.load(feature_columns_path)
-        X_valid = X_valid[feature_cols]
+        X = X[feature_cols]
 
     model = joblib.load(model_path)
-    valid_df["score"] = model.predict_proba(X_valid)[:, 1]
-    return valid_df
+    df["score"] = model.predict_proba(X)[:, 1]
+    return df
+
+
+def predict_valid(valid_model_path, model_path, feature_columns_path=None):
+    return predict_matrix(
+        valid_model_path,
+        model_path,
+        feature_columns_path=feature_columns_path,
+        id_cols=["customer_id", "item_id", "target"],
+    )
 
 
 def get_topk(df, k=10):
@@ -42,7 +53,7 @@ def precision_at_k_buyers_only(topk_df, valid_label_lf, k=10):
 import pickle
 
 
-def topk_to_submission_dict(topk_df):
+def topk_to_submission_dict(topk_df, k=10, user_ids=None, fallback_items=None):
     """
     Convert dataframe top-k prediction thành:
 
@@ -52,15 +63,31 @@ def topk_to_submission_dict(topk_df):
     """
 
     submission = {}
+    rows = (
+        topk_df.iter_rows(named=True)
+        if hasattr(topk_df, "iter_rows")
+        else topk_df[["customer_id", "item_id"]].to_dict("records")
+    )
 
-    for row in topk_df.iter_rows(named=True):
+    for row in rows:
         customer_id = row["customer_id"]
         item_id = row["item_id"]
 
         if customer_id not in submission:
             submission[customer_id] = []
 
-        submission[customer_id].append(item_id)
+        if item_id not in submission[customer_id] and len(submission[customer_id]) < k:
+            submission[customer_id].append(item_id)
+
+    if user_ids is not None:
+        fallback_items = [] if fallback_items is None else list(fallback_items)
+        for customer_id in user_ids:
+            items = submission.setdefault(customer_id, [])
+            for item_id in fallback_items:
+                if len(items) >= k:
+                    break
+                if item_id not in items:
+                    items.append(item_id)
 
     return submission
 

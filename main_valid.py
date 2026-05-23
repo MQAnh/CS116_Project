@@ -10,7 +10,6 @@ from src.evaluate import (
     predict_valid,
     get_topk,
     precision_at_k,
-    precision_at_k_buyers_only,
     topk_to_submission_dict,
     save_submission_pickle,
 )
@@ -65,13 +64,7 @@ def main():
     )
     top10 = get_topk(valid_df, k=10)
 
-    print("Precision@10 all active users:", precision_at_k(top10, k=10))
-    print(
-        "Precision@10 buyers only:",
-        precision_at_k_buyers_only(top10, splits["valid_label_lf"], k=10),
-    )
-
-    top10 = get_topk(valid_df, k=10)
+    print("Precision@10:", precision_at_k(top10, k=10))
 
     submission_dict = topk_to_submission_dict(top10)
 
