@@ -68,6 +68,10 @@ def main():
             cfg.MODEL_PATH,
             feature_columns_path=cfg.FEATURE_COLUMNS_PATH,
             importance_path=cfg.IMPORTANCE_PATH,
+            train_batch_size=cfg.TRAIN_READ_BATCH_SIZE,
+            negative_ratio=cfg.TRAIN_NEGATIVE_RATIO,
+            positive_fraction=cfg.TRAIN_POSITIVE_FRACTION,
+            max_train_rows=cfg.TRAIN_MAX_ROWS,
         )
     log_step("train pipeline finished")
 
