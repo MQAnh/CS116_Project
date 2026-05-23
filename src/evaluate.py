@@ -50,6 +50,37 @@ def precision_at_k_buyers_only(topk_df, valid_label_lf, k=10):
     return precision_at_k(topk_eval, k=k)
 
 
+def ground_truth_to_dict(label_lf):
+    gt_df = (
+        label_lf
+        .select(["customer_id", "item_id"])
+        .unique()
+        .group_by("customer_id")
+        .agg("item_id")
+        .collect()
+    )
+    return {
+        row["customer_id"]: row["item_id"]
+        for row in gt_df.iter_rows(named=True)
+    }
+
+
+def server_precision_at_k(submission, answer, k=10, scale=100):
+    precisions = []
+
+    for customer_id, true_items in answer.items():
+        pred_items = submission.get(customer_id, [])
+        pred_topk = pred_items[:k]
+        true_set = set(true_items)
+        hits = sum(1 for item in pred_topk if item in true_set)
+        precisions.append(hits / float(k))
+
+    if not precisions:
+        return 0.0
+
+    return (sum(precisions) / len(precisions)) * scale
+
+
 import pickle
 
 

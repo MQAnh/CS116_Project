@@ -9,7 +9,8 @@ from src.preprocess import prepare_valid_matrix
 from src.evaluate import (
     predict_valid,
     get_topk,
-    precision_at_k,
+    ground_truth_to_dict,
+    server_precision_at_k,
     topk_to_submission_dict,
     save_submission_pickle,
 )
@@ -64,9 +65,9 @@ def main():
     )
     top10 = get_topk(valid_df, k=10)
 
-    print("Precision@10:", precision_at_k(top10, k=10))
-
     submission_dict = topk_to_submission_dict(top10)
+    answer_dict = ground_truth_to_dict(splits["valid_label_lf"])
+    print("Server Precision@10:", server_precision_at_k(submission_dict, answer_dict, k=10))
 
     save_submission_pickle(
         submission_dict,
