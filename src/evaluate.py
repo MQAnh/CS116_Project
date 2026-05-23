@@ -4,6 +4,8 @@ import joblib
 import pandas as pd
 import pyarrow.parquet as pq
 
+from src.logging_utils import log_step
+
 
 def predict_matrix(model_ready_path, model_path, feature_columns_path=None, id_cols=None):
     df = pd.read_parquet(model_ready_path)
@@ -45,20 +47,24 @@ def predict_topk_from_parquet(
     id_cols=None,
     k=10,
     batch_size=500_000,
+    log_every=1,
 ):
     model = joblib.load(model_path)
     feature_cols = joblib.load(feature_columns_path) if feature_columns_path is not None else None
     id_cols = ["customer_id", "item_id", "target"] if id_cols is None else id_cols
 
     parquet_file = pq.ParquetFile(model_ready_path)
+    total_rows = parquet_file.metadata.num_rows
     schema_cols = set(parquet_file.schema_arrow.names)
     read_cols = None
     if feature_cols is not None:
         read_cols = [c for c in id_cols if c in schema_cols] + feature_cols
     running_topk = None
+    processed_rows = 0
 
-    for batch in parquet_file.iter_batches(batch_size=batch_size, columns=read_cols):
+    for batch_idx, batch in enumerate(parquet_file.iter_batches(batch_size=batch_size, columns=read_cols), start=1):
         batch_df = batch.to_pandas()
+        processed_rows += len(batch_df)
         drop_cols = [c for c in id_cols if c in batch_df.columns]
         X = batch_df.drop(columns=drop_cols)
 
@@ -75,6 +81,13 @@ def predict_topk_from_parquet(
             running_topk = get_topk(
                 pd.concat([running_topk, batch_topk], ignore_index=True),
                 k=k,
+            )
+
+        if log_every and batch_idx % log_every == 0:
+            log_step(
+                "predict batch "
+                f"{batch_idx}: {processed_rows:,}/{total_rows:,} rows, "
+                f"kept {len(running_topk):,} top-k rows"
             )
 
     if running_topk is None:
