@@ -30,9 +30,16 @@ def main():
 
     final_candidates_lf = build_valid_candidates(
         splits["final_hist_lf"],
+        items_lf=items_lf,
         min_bills=cfg.MIN_BILLS_ACTIVE_USER,
         recent_top_k=cfg.RECENT_TOP_K_VALID,
         frequent_top_k=cfg.FREQUENT_TOP_K_VALID,
+        category_col=cfg.CATEGORY_CANDIDATE_COL,
+        user_top_categories=cfg.USER_TOP_CATEGORIES,
+        category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
+        co_anchor_top_k=cfg.COOCCURRENCE_ANCHOR_TOP_K,
+        co_top_k=cfg.COOCCURRENCE_TOP_K,
+        co_max_bill_items=cfg.COOCCURRENCE_MAX_BILL_ITEMS,
     )
     final_candidates_lf.sink_parquet(cfg.FINAL_CANDIDATES_PATH)
     final_candidates_lf = pl.scan_parquet(cfg.FINAL_CANDIDATES_PATH)
