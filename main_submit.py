@@ -4,8 +4,7 @@ from src import config as cfg
 from src.candidates import build_valid_candidates
 from src.data_loader import load_data
 from src.evaluate import (
-    get_topk,
-    predict_matrix,
+    predict_topk_from_parquet,
     save_submission_pickle,
     topk_to_submission_dict,
 )
@@ -57,13 +56,14 @@ def main():
     )
     final_model_lf.sink_parquet(cfg.FINAL_MODEL_READY_PATH)
 
-    final_df = predict_matrix(
+    top10 = predict_topk_from_parquet(
         cfg.FINAL_MODEL_READY_PATH,
         cfg.MODEL_PATH,
         feature_columns_path=cfg.FEATURE_COLUMNS_PATH,
         id_cols=["customer_id", "item_id"],
+        k=10,
+        batch_size=cfg.PREDICT_BATCH_SIZE,
     )
-    top10 = get_topk(final_df, k=10)
 
     user_ids = (
         final_candidates_lf

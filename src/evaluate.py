@@ -1,5 +1,8 @@
+import pickle
+
 import joblib
 import pandas as pd
+import pyarrow.parquet as pq
 
 
 def predict_matrix(model_ready_path, model_path, feature_columns_path=None, id_cols=None):
@@ -33,6 +36,51 @@ def get_topk(df, k=10):
         .groupby("customer_id")
         .head(k)
     )
+
+
+def predict_topk_from_parquet(
+    model_ready_path,
+    model_path,
+    feature_columns_path=None,
+    id_cols=None,
+    k=10,
+    batch_size=500_000,
+):
+    model = joblib.load(model_path)
+    feature_cols = joblib.load(feature_columns_path) if feature_columns_path is not None else None
+    id_cols = ["customer_id", "item_id", "target"] if id_cols is None else id_cols
+
+    parquet_file = pq.ParquetFile(model_ready_path)
+    schema_cols = set(parquet_file.schema_arrow.names)
+    read_cols = None
+    if feature_cols is not None:
+        read_cols = [c for c in id_cols if c in schema_cols] + feature_cols
+    running_topk = None
+
+    for batch in parquet_file.iter_batches(batch_size=batch_size, columns=read_cols):
+        batch_df = batch.to_pandas()
+        drop_cols = [c for c in id_cols if c in batch_df.columns]
+        X = batch_df.drop(columns=drop_cols)
+
+        if feature_cols is not None:
+            X = X[feature_cols]
+
+        batch_df["score"] = model.predict_proba(X)[:, 1]
+        keep_cols = [c for c in id_cols if c in batch_df.columns] + ["score"]
+        batch_topk = get_topk(batch_df[keep_cols], k=k)
+
+        if running_topk is None:
+            running_topk = batch_topk
+        else:
+            running_topk = get_topk(
+                pd.concat([running_topk, batch_topk], ignore_index=True),
+                k=k,
+            )
+
+    if running_topk is None:
+        return pd.DataFrame(columns=[c for c in id_cols if c in ["customer_id", "item_id", "target"]] + ["score"])
+
+    return running_topk.reset_index(drop=True)
 
 
 def precision_at_k(topk_df, k=10):
@@ -80,10 +128,6 @@ def server_precision_at_k(submission, answer, k=10, scale=100):
 
     return (sum(precisions) / len(precisions)) * scale
 
-
-import pickle
-
-
 def topk_to_submission_dict(topk_df, k=10, user_ids=None, fallback_items=None):
     """
     Convert dataframe top-k prediction thành:
@@ -97,7 +141,10 @@ def topk_to_submission_dict(topk_df, k=10, user_ids=None, fallback_items=None):
     rows = (
         topk_df.iter_rows(named=True)
         if hasattr(topk_df, "iter_rows")
-        else topk_df[["customer_id", "item_id"]].to_dict("records")
+        else (
+            {"customer_id": row.customer_id, "item_id": row.item_id}
+            for row in topk_df[["customer_id", "item_id"]].itertuples(index=False)
+        )
     )
 
     for row in rows:

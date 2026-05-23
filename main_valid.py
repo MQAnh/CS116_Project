@@ -7,9 +7,8 @@ from src.labels import make_ground_truth, make_labeled_dataset
 from src.features import build_features
 from src.preprocess import prepare_valid_matrix
 from src.evaluate import (
-    predict_valid,
-    get_topk,
     ground_truth_to_dict,
+    predict_topk_from_parquet,
     server_precision_at_k,
     topk_to_submission_dict,
     save_submission_pickle,
@@ -65,12 +64,14 @@ def main():
     )
     valid_model_lf.sink_parquet(cfg.VALID_MODEL_READY_PATH)
 
-    valid_df = predict_valid(
+    top10 = predict_topk_from_parquet(
         cfg.VALID_MODEL_READY_PATH,
         cfg.MODEL_PATH,
         feature_columns_path=cfg.FEATURE_COLUMNS_PATH,
+        id_cols=["customer_id", "item_id", "target"],
+        k=10,
+        batch_size=cfg.PREDICT_BATCH_SIZE,
     )
-    top10 = get_topk(valid_df, k=10)
 
     submission_dict = topk_to_submission_dict(top10)
     answer_dict = ground_truth_to_dict(splits["valid_label_lf"])
