@@ -3,7 +3,7 @@ from src.data_loader import load_data
 from src.splits import make_time_splits
 from src.candidates import build_train_candidates
 from src.labels import make_ground_truth, make_labeled_dataset
-from src.features import build_features
+from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
 from src.preprocess import prepare_train_matrix
 from src.train import train_lgbm
@@ -50,9 +50,13 @@ def main():
         train_dataset_lf = __import__("polars").scan_parquet(cfg.TRAIN_DATASET_LABELS_PATH)
 
     with log_time("build train features"):
-        train_features_lf = build_features(splits["train_hist_lf"], train_dataset_lf, items_lf)
-        train_features_lf.sink_parquet(cfg.TRAIN_FEATURES_PATH)
-        train_features_lf = __import__("polars").scan_parquet(cfg.TRAIN_FEATURES_PATH)
+        train_features_lf = build_features_chunked(
+            splits["train_hist_lf"],
+            train_dataset_lf,
+            items_lf,
+            cfg.TRAIN_FEATURES_CHUNKS_DIR,
+            n_chunks=cfg.FEATURE_BUILD_CHUNKS,
+        )
 
     with log_time("prepare train matrix"):
         train_model_lf, feature_cols = prepare_train_matrix(train_features_lf, cfg.DROP_COLS, cfg.CAT_COLS)

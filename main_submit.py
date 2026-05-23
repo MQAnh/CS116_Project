@@ -8,7 +8,7 @@ from src.evaluate import (
     save_submission_pickle,
     topk_to_submission_dict,
 )
-from src.features import build_features
+from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
 from src.preprocess import prepare_inference_matrix
 from src.splits import make_time_splits
@@ -48,12 +48,16 @@ def main():
         final_candidates_lf = pl.scan_parquet(cfg.FINAL_CANDIDATES_PATH)
 
     with log_time("build final features"):
-        final_features_lf = build_features(splits["final_hist_lf"], final_candidates_lf, items_lf)
-        final_features_lf.sink_parquet(cfg.FINAL_FEATURES_PATH)
-        final_features_lf = pl.scan_parquet(cfg.FINAL_FEATURES_PATH)
+        final_features_lf = build_features_chunked(
+            splits["final_hist_lf"],
+            final_candidates_lf,
+            items_lf,
+            cfg.FINAL_FEATURES_CHUNKS_DIR,
+            n_chunks=cfg.FEATURE_BUILD_CHUNKS,
+        )
 
     with log_time("prepare final matrix"):
-        train_features_lf = pl.scan_parquet(cfg.TRAIN_FEATURES_PATH)
+        train_features_lf = pl.scan_parquet(str(cfg.TRAIN_FEATURES_CHUNKS_DIR / "*.parquet"))
         final_model_lf, _ = prepare_inference_matrix(
             final_features_lf,
             train_features_lf,

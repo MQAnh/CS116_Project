@@ -13,15 +13,18 @@ ITEMS_PATH = RAW_DIR / "items.parquet"
 TRAIN_CANDIDATES_PATH = PROCESSED_DIR / "train_candidates.parquet"
 TRAIN_DATASET_LABELS_PATH = PROCESSED_DIR / "train_dataset_labels.parquet"
 TRAIN_FEATURES_PATH = PROCESSED_DIR / "train_features.parquet"
+TRAIN_FEATURES_CHUNKS_DIR = PROCESSED_DIR / "train_features_chunks"
 TRAIN_MODEL_READY_PATH = PROCESSED_DIR / "train_model_ready.parquet"
 
 VALID_CANDIDATES_PATH = PROCESSED_DIR / "valid_candidates.parquet"
 VALID_GT_PATH = PROCESSED_DIR / "valid_gt.parquet"
 VALID_DATASET_LABELS_PATH = PROCESSED_DIR / "valid_dataset_labels.parquet"
 VALID_FEATURES_PATH = PROCESSED_DIR / "valid_features.parquet"
+VALID_FEATURES_CHUNKS_DIR = PROCESSED_DIR / "valid_features_chunks"
 VALID_MODEL_READY_PATH = PROCESSED_DIR / "valid_model_ready.parquet"
 FINAL_CANDIDATES_PATH = PROCESSED_DIR / "final_candidates.parquet"
 FINAL_FEATURES_PATH = PROCESSED_DIR / "final_features.parquet"
+FINAL_FEATURES_CHUNKS_DIR = PROCESSED_DIR / "final_features_chunks"
 FINAL_MODEL_READY_PATH = PROCESSED_DIR / "final_model_ready.parquet"
 
 MODEL_PATH = MODEL_DIR / "lgbm_baseline.pkl"
@@ -48,6 +51,7 @@ COOCCURRENCE_ANCHOR_TOP_K = 10
 COOCCURRENCE_TOP_K = 5
 COOCCURRENCE_MAX_BILL_ITEMS = 15
 PREDICT_BATCH_SIZE = 100_000
+FEATURE_BUILD_CHUNKS = 16
 
 DROP_COLS = [
     "customer_id",

@@ -4,7 +4,7 @@ from src.data_loader import load_data
 from src.splits import make_time_splits
 from src.candidates import build_valid_candidates
 from src.labels import make_ground_truth, make_labeled_dataset
-from src.features import build_features
+from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
 from src.preprocess import prepare_valid_matrix
 from src.evaluate import (
@@ -58,12 +58,16 @@ def main():
         valid_dataset_lf = pl.scan_parquet(cfg.VALID_DATASET_LABELS_PATH)
 
     with log_time("build validation features"):
-        valid_features_lf = build_features(splits["valid_hist_lf"], valid_dataset_lf, items_lf)
-        valid_features_lf.sink_parquet(cfg.VALID_FEATURES_PATH)
-        valid_features_lf = pl.scan_parquet(cfg.VALID_FEATURES_PATH)
+        valid_features_lf = build_features_chunked(
+            splits["valid_hist_lf"],
+            valid_dataset_lf,
+            items_lf,
+            cfg.VALID_FEATURES_CHUNKS_DIR,
+            n_chunks=cfg.FEATURE_BUILD_CHUNKS,
+        )
 
     with log_time("prepare validation matrix"):
-        train_features_lf = pl.scan_parquet(cfg.TRAIN_FEATURES_PATH)
+        train_features_lf = pl.scan_parquet(str(cfg.TRAIN_FEATURES_CHUNKS_DIR / "*.parquet"))
         valid_model_lf, feature_cols = prepare_valid_matrix(
             valid_features_lf,
             train_features_lf,

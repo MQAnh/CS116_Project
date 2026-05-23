@@ -1,4 +1,8 @@
+import shutil
+
 import polars as pl
+
+from src.logging_utils import log_step
 
 
 def make_item_meta(items_lf):
@@ -90,3 +94,31 @@ def build_features(hist_lf, dataset_lf, items_lf):
     item_features_lf = make_item_features(hist_lf, item_meta_lf)
     user_item_features_lf = make_user_item_features(hist_lf)
     return join_features(dataset_lf, user_features_lf, item_features_lf, user_item_features_lf)
+
+
+def build_features_chunked(hist_lf, dataset_lf, items_lf, output_dir, n_chunks=16):
+    output_dir = output_dir.resolve()
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    item_meta_lf = make_item_meta(items_lf)
+    user_features_lf = make_user_features(hist_lf)
+    item_features_lf = make_item_features(hist_lf, item_meta_lf)
+    user_item_features_lf = make_user_item_features(hist_lf)
+
+    for chunk_idx in range(n_chunks):
+        chunk_path = output_dir / f"part_{chunk_idx:03d}.parquet"
+        log_step(f"build features chunk {chunk_idx + 1}/{n_chunks}: {chunk_path.name}")
+        chunk_dataset_lf = dataset_lf.filter(
+            (pl.col("customer_id") % n_chunks) == chunk_idx
+        )
+        chunk_features_lf = join_features(
+            chunk_dataset_lf,
+            user_features_lf,
+            item_features_lf,
+            user_item_features_lf,
+        )
+        chunk_features_lf.sink_parquet(chunk_path)
+
+    return pl.scan_parquet(str(output_dir / "*.parquet"))
