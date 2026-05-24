@@ -1,4 +1,5 @@
 import pickle
+import heapq
 
 import joblib
 import pandas as pd
@@ -59,8 +60,10 @@ def predict_topk_from_parquet(
     read_cols = None
     if feature_cols is not None:
         read_cols = [c for c in id_cols if c in schema_cols] + feature_cols
-    running_topk = None
+    topk_by_user = {}
     processed_rows = 0
+    kept_rows = 0
+    sequence = 0
 
     for batch_idx, batch in enumerate(parquet_file.iter_batches(batch_size=batch_size, columns=read_cols), start=1):
         batch_df = batch.to_pandas()
@@ -71,29 +74,50 @@ def predict_topk_from_parquet(
         if feature_cols is not None:
             X = X[feature_cols]
 
-        batch_df["score"] = model.predict_proba(X)[:, 1]
-        keep_cols = [c for c in id_cols if c in batch_df.columns] + ["score"]
-        batch_topk = get_topk(batch_df[keep_cols], k=k)
+        scores = model.predict_proba(X)[:, 1]
+        customer_ids = batch_df["customer_id"].to_numpy()
+        item_ids = batch_df["item_id"].to_numpy()
+        targets = batch_df["target"].to_numpy() if "target" in batch_df.columns else None
 
-        if running_topk is None:
-            running_topk = batch_topk
-        else:
-            running_topk = get_topk(
-                pd.concat([running_topk, batch_topk], ignore_index=True),
-                k=k,
-            )
+        for row_idx, score in enumerate(scores):
+            customer_id = int(customer_ids[row_idx])
+            item_id = item_ids[row_idx]
+            target = int(targets[row_idx]) if targets is not None else None
+            heap = topk_by_user.setdefault(customer_id, [])
+            entry = (float(score), sequence, item_id, target)
+            sequence += 1
+
+            if len(heap) < k:
+                heapq.heappush(heap, entry)
+                kept_rows += 1
+            elif score > heap[0][0]:
+                heapq.heapreplace(heap, entry)
 
         if log_every and batch_idx % log_every == 0:
             log_step(
                 "predict batch "
                 f"{batch_idx}: {processed_rows:,}/{total_rows:,} rows, "
-                f"kept {len(running_topk):,} top-k rows"
+                f"kept {kept_rows:,} top-k rows for {len(topk_by_user):,} users"
             )
 
-    if running_topk is None:
+    if not topk_by_user:
         return pd.DataFrame(columns=[c for c in id_cols if c in ["customer_id", "item_id", "target"]] + ["score"])
 
-    return running_topk.reset_index(drop=True)
+    records = []
+    has_target = "target" in id_cols
+    for customer_id, heap in topk_by_user.items():
+        for score, _, item_id, target in sorted(heap, key=lambda row: row[0], reverse=True):
+            record = {
+                "customer_id": customer_id,
+                "item_id": item_id,
+                "score": score,
+            }
+            if has_target:
+                record["target"] = target
+            records.append(record)
+
+    column_order = [c for c in id_cols if c in ["customer_id", "item_id", "target"]] + ["score"]
+    return pd.DataFrame.from_records(records, columns=column_order)
 
 
 def precision_at_k(topk_df, k=10):
