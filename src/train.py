@@ -98,19 +98,17 @@ def train_lgbm(
         stratify=y,
     )
 
-    pos = y_train.sum()
-    neg = len(y_train) - pos
-    scale_pos_weight = neg / pos if pos > 0 else 1.0
-
     model = lgb.LGBMClassifier(
         objective="binary",
-        n_estimators=500,
-        learning_rate=0.05,
-        num_leaves=63,
+        n_estimators=1000,
+        learning_rate=0.03,
+        num_leaves=31,
         max_depth=-1,
+        min_child_samples=100,
         subsample=0.8,
         colsample_bytree=0.8,
-        scale_pos_weight=scale_pos_weight,
+        reg_lambda=5.0,
+        scale_pos_weight=1.0,
         random_state=42,
         n_jobs=-1,
         verbose=-1,
@@ -122,7 +120,7 @@ def train_lgbm(
         eval_set=[(X_holdout, y_holdout)],
         eval_metric="auc",
         callbacks=[
-            lgb.early_stopping(stopping_rounds=50),
+            lgb.early_stopping(stopping_rounds=100),
             lgb.log_evaluation(period=50),
         ],
     )

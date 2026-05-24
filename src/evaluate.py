@@ -2,6 +2,7 @@ import pickle
 import heapq
 
 import joblib
+import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
@@ -49,6 +50,9 @@ def predict_topk_from_parquet(
     k=10,
     batch_size=500_000,
     log_every=1,
+    repeat_boost=0.04,
+    affinity_boost=0.03,
+    popularity_penalty=0.03,
 ):
     model = joblib.load(model_path)
     feature_cols = joblib.load(feature_columns_path) if feature_columns_path is not None else None
@@ -75,11 +79,18 @@ def predict_topk_from_parquet(
             X = X[feature_cols]
 
         scores = model.predict_proba(X)[:, 1]
+        adjusted_scores = adjust_prediction_scores(
+            scores,
+            batch_df,
+            repeat_boost=repeat_boost,
+            affinity_boost=affinity_boost,
+            popularity_penalty=popularity_penalty,
+        )
         customer_ids = batch_df["customer_id"].to_numpy()
         item_ids = batch_df["item_id"].to_numpy()
         targets = batch_df["target"].to_numpy() if "target" in batch_df.columns else None
 
-        for row_idx, score in enumerate(scores):
+        for row_idx, score in enumerate(adjusted_scores):
             customer_id = int(customer_ids[row_idx])
             item_id = item_ids[row_idx]
             target = int(targets[row_idx]) if targets is not None else None
@@ -118,6 +129,42 @@ def predict_topk_from_parquet(
 
     column_order = [c for c in id_cols if c in ["customer_id", "item_id", "target"]] + ["score"]
     return pd.DataFrame.from_records(records, columns=column_order)
+
+
+def normalized_log_feature(df, column):
+    if column not in df.columns:
+        return 0
+    values = pd.to_numeric(df[column], errors="coerce").fillna(0).clip(lower=0)
+    logged = pd.Series(np.log1p(values), index=df.index)
+    max_value = logged.max()
+    if max_value <= 0:
+        return 0
+    return logged / max_value
+
+
+def adjust_prediction_scores(
+    scores,
+    batch_df,
+    repeat_boost=0.04,
+    affinity_boost=0.03,
+    popularity_penalty=0.03,
+):
+    adjusted = pd.Series(scores, index=batch_df.index, dtype="float64")
+
+    if "ui_n_transactions" in batch_df.columns:
+        adjusted += repeat_boost * (batch_df["ui_n_transactions"].fillna(0) > 0).astype(float)
+
+    if "uc_transaction_share" in batch_df.columns:
+        adjusted += affinity_boost * batch_df["uc_transaction_share"].fillna(0).clip(lower=0, upper=1)
+
+    if "ub_transaction_share" in batch_df.columns:
+        adjusted += affinity_boost * batch_df["ub_transaction_share"].fillna(0).clip(lower=0, upper=1)
+
+    pop_norm = normalized_log_feature(batch_df, "item_n_customers")
+    if not isinstance(pop_norm, int):
+        adjusted -= popularity_penalty * pop_norm
+
+    return adjusted.to_numpy()
 
 
 def precision_at_k(topk_df, k=10):

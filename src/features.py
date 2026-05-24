@@ -55,6 +55,34 @@ def make_item_features(hist_lf, item_meta_lf):
     )
 
 
+def make_user_category_features(hist_lf, item_meta_lf):
+    return (
+        hist_lf
+        .join(item_meta_lf.select(["item_id", "category_l2"]), on="item_id", how="left")
+        .filter(pl.col("category_l2").is_not_null())
+        .group_by(["customer_id", "category_l2"])
+        .agg([
+            pl.len().alias("uc_n_transactions"),
+            pl.col("bill_id").n_unique().alias("uc_n_bills"),
+            pl.col("quantity").sum().alias("uc_total_quantity"),
+        ])
+    )
+
+
+def make_user_brand_features(hist_lf, item_meta_lf):
+    return (
+        hist_lf
+        .join(item_meta_lf.select(["item_id", "brand"]), on="item_id", how="left")
+        .filter(pl.col("brand").is_not_null())
+        .group_by(["customer_id", "brand"])
+        .agg([
+            pl.len().alias("ub_n_transactions"),
+            pl.col("bill_id").n_unique().alias("ub_n_bills"),
+            pl.col("quantity").sum().alias("ub_total_quantity"),
+        ])
+    )
+
+
 def make_user_item_features(hist_lf):
     max_date = hist_lf.select(pl.col("date").max()).collect()[0, 0]
     return (
@@ -73,17 +101,36 @@ def make_user_item_features(hist_lf):
     )
 
 
-def join_features(dataset_lf, user_features_lf, item_features_lf, user_item_features_lf):
+def join_features(
+    dataset_lf,
+    user_features_lf,
+    item_features_lf,
+    user_item_features_lf,
+    user_category_features_lf,
+    user_brand_features_lf,
+):
     return (
         dataset_lf
         .join(user_features_lf, on="customer_id", how="left")
         .join(item_features_lf, on="item_id", how="left")
+        .join(user_category_features_lf, on=["customer_id", "category_l2"], how="left")
+        .join(user_brand_features_lf, on=["customer_id", "brand"], how="left")
         .join(user_item_features_lf, on=["customer_id", "item_id"], how="left")
         .with_columns([
             pl.col("ui_n_transactions").fill_null(0).cast(pl.Int32),
             pl.col("ui_n_bills").fill_null(0).cast(pl.Int32),
             pl.col("ui_total_quantity").fill_null(0).cast(pl.Int32),
             pl.col("ui_recency_days").fill_null(9999).cast(pl.Int32),
+            pl.col("uc_n_transactions").fill_null(0).cast(pl.Int32),
+            pl.col("uc_n_bills").fill_null(0).cast(pl.Int32),
+            pl.col("uc_total_quantity").fill_null(0).cast(pl.Int32),
+            pl.col("ub_n_transactions").fill_null(0).cast(pl.Int32),
+            pl.col("ub_n_bills").fill_null(0).cast(pl.Int32),
+            pl.col("ub_total_quantity").fill_null(0).cast(pl.Int32),
+        ])
+        .with_columns([
+            (pl.col("uc_n_transactions") / pl.col("user_n_transactions")).fill_null(0).alias("uc_transaction_share"),
+            (pl.col("ub_n_transactions") / pl.col("user_n_transactions")).fill_null(0).alias("ub_transaction_share"),
         ])
     )
 
@@ -93,7 +140,16 @@ def build_features(hist_lf, dataset_lf, items_lf):
     user_features_lf = make_user_features(hist_lf)
     item_features_lf = make_item_features(hist_lf, item_meta_lf)
     user_item_features_lf = make_user_item_features(hist_lf)
-    return join_features(dataset_lf, user_features_lf, item_features_lf, user_item_features_lf)
+    user_category_features_lf = make_user_category_features(hist_lf, item_meta_lf)
+    user_brand_features_lf = make_user_brand_features(hist_lf, item_meta_lf)
+    return join_features(
+        dataset_lf,
+        user_features_lf,
+        item_features_lf,
+        user_item_features_lf,
+        user_category_features_lf,
+        user_brand_features_lf,
+    )
 
 
 def build_features_chunked(hist_lf, dataset_lf, items_lf, output_dir, n_chunks=16):
@@ -106,6 +162,8 @@ def build_features_chunked(hist_lf, dataset_lf, items_lf, output_dir, n_chunks=1
     user_features_lf = make_user_features(hist_lf)
     item_features_lf = make_item_features(hist_lf, item_meta_lf)
     user_item_features_lf = make_user_item_features(hist_lf)
+    user_category_features_lf = make_user_category_features(hist_lf, item_meta_lf)
+    user_brand_features_lf = make_user_brand_features(hist_lf, item_meta_lf)
 
     for chunk_idx in range(n_chunks):
         chunk_path = output_dir / f"part_{chunk_idx:03d}.parquet"
@@ -118,6 +176,8 @@ def build_features_chunked(hist_lf, dataset_lf, items_lf, output_dir, n_chunks=1
             user_features_lf,
             item_features_lf,
             user_item_features_lf,
+            user_category_features_lf,
+            user_brand_features_lf,
         )
         chunk_features_lf.sink_parquet(chunk_path)
 
