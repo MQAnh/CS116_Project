@@ -11,11 +11,17 @@ def make_ground_truth(label_lf):
 
 
 def make_labeled_dataset(candidates_lf, gt_lf):
+    candidate_cols = candidates_lf.collect_schema().names()
+    passthrough_cols = [
+        c for c in candidate_cols
+        if c not in ["customer_id", "item_id", "target"]
+    ]
     return (
         candidates_lf
         .select([
             pl.col("customer_id").cast(pl.Int32),
             pl.col("item_id").cast(pl.String),
+            *[pl.col(c) for c in passthrough_cols],
         ])
         .join(
             gt_lf.select([

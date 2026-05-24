@@ -175,8 +175,30 @@ def cooccurrence_candidates(
 
 
 def merge_candidates(candidate_lfs):
-    cols = ["customer_id", "item_id"]
-    return pl.concat([lf.select(cols) for lf in candidate_lfs]).unique(cols)
+    source_lfs = []
+    for lf in candidate_lfs:
+        if "candidate_source" not in lf.collect_schema():
+            lf = lf.with_columns(pl.lit("unknown").alias("candidate_source"))
+        source_lfs.append(lf.select(["customer_id", "item_id", "candidate_source"]))
+
+    return (
+        pl.concat(source_lfs)
+        .unique(["customer_id", "item_id", "candidate_source"])
+        .with_columns([
+            (pl.col("candidate_source") == "recent").cast(pl.Int8).alias("is_recent_candidate"),
+            (pl.col("candidate_source") == "frequent").cast(pl.Int8).alias("is_frequent_candidate"),
+            (pl.col("candidate_source") == "category_popular").cast(pl.Int8).alias("is_category_candidate"),
+            (pl.col("candidate_source") == "cooccurrence").cast(pl.Int8).alias("is_cooccurrence_candidate"),
+        ])
+        .group_by(["customer_id", "item_id"])
+        .agg([
+            pl.col("is_recent_candidate").max(),
+            pl.col("is_frequent_candidate").max(),
+            pl.col("is_category_candidate").max(),
+            pl.col("is_cooccurrence_candidate").max(),
+            pl.col("candidate_source").n_unique().alias("n_candidate_sources"),
+        ])
+    )
 
 
 def build_train_candidates(
@@ -229,8 +251,8 @@ def build_valid_candidates(
     co_max_bill_items=30,
 ):
     active_users_lf = get_active_users(valid_hist_lf, min_bills=min_bills)
-    recent_lf = recent_candidates(valid_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=False, source_name=None).unique(["customer_id", "item_id"])
-    freq_lf = frequent_candidates(valid_hist_lf, active_users_lf, top_k=frequent_top_k, source_name=None).unique(["customer_id", "item_id"])
+    recent_lf = recent_candidates(valid_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=False).unique(["customer_id", "item_id"])
+    freq_lf = frequent_candidates(valid_hist_lf, active_users_lf, top_k=frequent_top_k).unique(["customer_id", "item_id"])
     candidate_lfs = [recent_lf, freq_lf]
     if items_lf is not None:
         candidate_lfs.append(category_popular_candidates(
@@ -240,7 +262,6 @@ def build_valid_candidates(
             category_col=category_col,
             user_top_categories=user_top_categories,
             items_per_category=category_items_per_category,
-            source_name=None,
         ))
     candidate_lfs.append(cooccurrence_candidates(
         valid_hist_lf,
@@ -248,6 +269,5 @@ def build_valid_candidates(
         anchor_top_k=co_anchor_top_k,
         co_top_k=co_top_k,
         max_bill_items=co_max_bill_items,
-        source_name=None,
     ))
     return merge_candidates(candidate_lfs)
