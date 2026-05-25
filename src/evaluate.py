@@ -5,8 +5,20 @@ import joblib
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
+from pathlib import Path
 
 from src.logging_utils import log_step
+
+
+def parquet_files(path):
+    path = Path(path)
+    if path.is_dir():
+        return sorted(path.glob("*.parquet"))
+    return [path]
+
+
+def parquet_num_rows(files):
+    return sum(pq.ParquetFile(path).metadata.num_rows for path in files)
 
 
 def predict_matrix(model_ready_path, model_path, feature_columns_path=None, id_cols=None):
@@ -58,9 +70,9 @@ def predict_topk_from_parquet(
     feature_cols = joblib.load(feature_columns_path) if feature_columns_path is not None else None
     id_cols = ["customer_id", "item_id", "target"] if id_cols is None else id_cols
 
-    parquet_file = pq.ParquetFile(model_ready_path)
-    total_rows = parquet_file.metadata.num_rows
-    schema_cols = set(parquet_file.schema_arrow.names)
+    files = parquet_files(model_ready_path)
+    total_rows = parquet_num_rows(files)
+    schema_cols = set(pq.ParquetFile(files[0]).schema_arrow.names)
     read_cols = None
     if feature_cols is not None:
         read_cols = [c for c in id_cols if c in schema_cols] + feature_cols
@@ -68,48 +80,52 @@ def predict_topk_from_parquet(
     processed_rows = 0
     kept_rows = 0
     sequence = 0
+    batch_idx = 0
 
-    for batch_idx, batch in enumerate(parquet_file.iter_batches(batch_size=batch_size, columns=read_cols), start=1):
-        batch_df = batch.to_pandas()
-        processed_rows += len(batch_df)
-        drop_cols = [c for c in id_cols if c in batch_df.columns]
-        X = batch_df.drop(columns=drop_cols)
+    for file_path in files:
+        parquet_file = pq.ParquetFile(file_path)
+        for batch in parquet_file.iter_batches(batch_size=batch_size, columns=read_cols):
+            batch_idx += 1
+            batch_df = batch.to_pandas()
+            processed_rows += len(batch_df)
+            drop_cols = [c for c in id_cols if c in batch_df.columns]
+            X = batch_df.drop(columns=drop_cols)
 
-        if feature_cols is not None:
-            X = X[feature_cols]
+            if feature_cols is not None:
+                X = X[feature_cols]
 
-        scores = model.predict_proba(X)[:, 1]
-        adjusted_scores = adjust_prediction_scores(
-            scores,
-            batch_df,
-            repeat_boost=repeat_boost,
-            affinity_boost=affinity_boost,
-            popularity_penalty=popularity_penalty,
-        )
-        customer_ids = batch_df["customer_id"].to_numpy()
-        item_ids = batch_df["item_id"].to_numpy()
-        targets = batch_df["target"].to_numpy() if "target" in batch_df.columns else None
-
-        for row_idx, score in enumerate(adjusted_scores):
-            customer_id = int(customer_ids[row_idx])
-            item_id = item_ids[row_idx]
-            target = int(targets[row_idx]) if targets is not None else None
-            heap = topk_by_user.setdefault(customer_id, [])
-            entry = (float(score), sequence, item_id, target)
-            sequence += 1
-
-            if len(heap) < k:
-                heapq.heappush(heap, entry)
-                kept_rows += 1
-            elif score > heap[0][0]:
-                heapq.heapreplace(heap, entry)
-
-        if log_every and batch_idx % log_every == 0:
-            log_step(
-                "predict batch "
-                f"{batch_idx}: {processed_rows:,}/{total_rows:,} rows, "
-                f"kept {kept_rows:,} top-k rows for {len(topk_by_user):,} users"
+            scores = model.predict_proba(X)[:, 1]
+            adjusted_scores = adjust_prediction_scores(
+                scores,
+                batch_df,
+                repeat_boost=repeat_boost,
+                affinity_boost=affinity_boost,
+                popularity_penalty=popularity_penalty,
             )
+            customer_ids = batch_df["customer_id"].to_numpy()
+            item_ids = batch_df["item_id"].to_numpy()
+            targets = batch_df["target"].to_numpy() if "target" in batch_df.columns else None
+
+            for row_idx, score in enumerate(adjusted_scores):
+                customer_id = int(customer_ids[row_idx])
+                item_id = item_ids[row_idx]
+                target = int(targets[row_idx]) if targets is not None else None
+                heap = topk_by_user.setdefault(customer_id, [])
+                entry = (float(score), sequence, item_id, target)
+                sequence += 1
+
+                if len(heap) < k:
+                    heapq.heappush(heap, entry)
+                    kept_rows += 1
+                elif score > heap[0][0]:
+                    heapq.heapreplace(heap, entry)
+
+            if log_every and batch_idx % log_every == 0:
+                log_step(
+                    "predict batch "
+                    f"{batch_idx}: {processed_rows:,}/{total_rows:,} rows, "
+                    f"kept {kept_rows:,} top-k rows for {len(topk_by_user):,} users"
+                )
 
     if not topk_by_user:
         return pd.DataFrame(columns=[c for c in id_cols if c in ["customer_id", "item_id", "target"]] + ["score"])

@@ -3,10 +3,22 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
+from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
 from src.logging_utils import log_step
+
+
+def parquet_files(path):
+    path = Path(path)
+    if path.is_dir():
+        return sorted(path.glob("*.parquet"))
+    return [path]
+
+
+def parquet_num_rows(files):
+    return sum(pq.ParquetFile(path).metadata.num_rows for path in files)
 
 
 def load_training_sample(
@@ -17,41 +29,49 @@ def load_training_sample(
     max_rows=3_000_000,
     random_state=42,
 ):
-    parquet_file = pq.ParquetFile(train_model_path)
-    total_rows = parquet_file.metadata.num_rows
+    files = parquet_files(train_model_path)
+    total_rows = parquet_num_rows(files)
     sampled_batches = []
     sampled_rows = 0
+    read_rows = 0
+    batch_idx = 0
 
-    for batch_idx, batch in enumerate(parquet_file.iter_batches(batch_size=batch_size), start=1):
-        batch_df = batch.to_pandas()
-        pos_df = batch_df[batch_df["target"] == 1]
-        neg_df = batch_df[batch_df["target"] == 0]
+    for file_path in files:
+        parquet_file = pq.ParquetFile(file_path)
+        for batch in parquet_file.iter_batches(batch_size=batch_size):
+            batch_idx += 1
+            batch_df = batch.to_pandas()
+            read_rows += len(batch_df)
+            pos_df = batch_df[batch_df["target"] == 1]
+            neg_df = batch_df[batch_df["target"] == 0]
 
-        if positive_fraction < 1.0 and len(pos_df) > 0:
-            pos_df = pos_df.sample(frac=positive_fraction, random_state=random_state + batch_idx)
+            if positive_fraction < 1.0 and len(pos_df) > 0:
+                pos_df = pos_df.sample(frac=positive_fraction, random_state=random_state + batch_idx)
 
-        n_neg = min(len(neg_df), int(np.ceil(len(pos_df) * negative_ratio)))
-        if n_neg > 0:
-            neg_df = neg_df.sample(n=n_neg, random_state=random_state + batch_idx)
-        else:
-            neg_df = neg_df.iloc[0:0]
+            n_neg = min(len(neg_df), int(np.ceil(len(pos_df) * negative_ratio)))
+            if n_neg > 0:
+                neg_df = neg_df.sample(n=n_neg, random_state=random_state + batch_idx)
+            else:
+                neg_df = neg_df.iloc[0:0]
 
-        sample_df = pd.concat([pos_df, neg_df], ignore_index=True)
-        if len(sample_df) == 0:
-            continue
+            sample_df = pd.concat([pos_df, neg_df], ignore_index=True)
+            if len(sample_df) == 0:
+                continue
 
-        remaining_rows = max_rows - sampled_rows
-        if len(sample_df) > remaining_rows:
-            sample_df = sample_df.sample(n=remaining_rows, random_state=random_state + batch_idx)
+            remaining_rows = max_rows - sampled_rows
+            if len(sample_df) > remaining_rows:
+                sample_df = sample_df.sample(n=remaining_rows, random_state=random_state + batch_idx)
 
-        sampled_batches.append(sample_df)
-        sampled_rows += len(sample_df)
-        log_step(
-            "train sample batch "
-            f"{batch_idx}: read {min(batch_idx * batch_size, total_rows):,}/{total_rows:,} rows, "
-            f"kept {sampled_rows:,}/{max_rows:,} sampled rows"
-        )
+            sampled_batches.append(sample_df)
+            sampled_rows += len(sample_df)
+            log_step(
+                "train sample batch "
+                f"{batch_idx}: read {read_rows:,}/{total_rows:,} rows, "
+                f"kept {sampled_rows:,}/{max_rows:,} sampled rows"
+            )
 
+            if sampled_rows >= max_rows:
+                break
         if sampled_rows >= max_rows:
             break
 

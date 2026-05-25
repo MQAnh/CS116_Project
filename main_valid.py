@@ -6,7 +6,7 @@ from src.candidates import build_valid_candidates
 from src.labels import make_ground_truth, make_labeled_dataset
 from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
-from src.preprocess import prepare_valid_matrix
+from src.preprocess import prepare_valid_matrix_chunked
 from src.evaluate import (
     ground_truth_to_dict,
     predict_topk_from_parquet,
@@ -67,18 +67,17 @@ def main():
         )
 
     with log_time("prepare validation matrix"):
-        train_features_lf = pl.scan_parquet(str(cfg.TRAIN_FEATURES_CHUNKS_DIR / "*.parquet"))
-        valid_model_lf, feature_cols = prepare_valid_matrix(
-            valid_features_lf,
-            train_features_lf,
+        valid_model_lf, feature_cols = prepare_valid_matrix_chunked(
+            cfg.VALID_FEATURES_CHUNKS_DIR,
+            cfg.TRAIN_FEATURES_CHUNKS_DIR,
+            cfg.VALID_MODEL_READY_CHUNKS_DIR,
             cfg.DROP_COLS,
             cfg.CAT_COLS,
         )
-        valid_model_lf.sink_parquet(cfg.VALID_MODEL_READY_PATH)
 
     with log_time("predict validation top-k"):
         top10 = predict_topk_from_parquet(
-            cfg.VALID_MODEL_READY_PATH,
+            cfg.VALID_MODEL_READY_CHUNKS_DIR,
             cfg.MODEL_PATH,
             feature_columns_path=cfg.FEATURE_COLUMNS_PATH,
             id_cols=["customer_id", "item_id", "target"],

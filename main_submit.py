@@ -10,7 +10,7 @@ from src.evaluate import (
 )
 from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
-from src.preprocess import prepare_inference_matrix
+from src.preprocess import prepare_inference_matrix_chunked
 from src.splits import make_time_splits
 
 
@@ -57,18 +57,17 @@ def main():
         )
 
     with log_time("prepare final matrix"):
-        train_features_lf = pl.scan_parquet(str(cfg.TRAIN_FEATURES_CHUNKS_DIR / "*.parquet"))
-        final_model_lf, _ = prepare_inference_matrix(
-            final_features_lf,
-            train_features_lf,
+        final_model_lf, _ = prepare_inference_matrix_chunked(
+            cfg.FINAL_FEATURES_CHUNKS_DIR,
+            cfg.TRAIN_FEATURES_CHUNKS_DIR,
+            cfg.FINAL_MODEL_READY_CHUNKS_DIR,
             cfg.DROP_COLS,
             cfg.CAT_COLS,
         )
-        final_model_lf.sink_parquet(cfg.FINAL_MODEL_READY_PATH)
 
     with log_time("predict final top-k"):
         top10 = predict_topk_from_parquet(
-            cfg.FINAL_MODEL_READY_PATH,
+            cfg.FINAL_MODEL_READY_CHUNKS_DIR,
             cfg.MODEL_PATH,
             feature_columns_path=cfg.FEATURE_COLUMNS_PATH,
             id_cols=["customer_id", "item_id"],

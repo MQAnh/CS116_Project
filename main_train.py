@@ -5,7 +5,7 @@ from src.candidates import build_train_candidates
 from src.labels import make_ground_truth, make_labeled_dataset
 from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
-from src.preprocess import prepare_train_matrix
+from src.preprocess import prepare_train_matrix_chunked
 from src.train import train_lgbm
 
 
@@ -59,12 +59,16 @@ def main():
         )
 
     with log_time("prepare train matrix"):
-        train_model_lf, feature_cols = prepare_train_matrix(train_features_lf, cfg.DROP_COLS, cfg.CAT_COLS)
-        train_model_lf.sink_parquet(cfg.TRAIN_MODEL_READY_PATH)
+        train_model_lf, feature_cols = prepare_train_matrix_chunked(
+            cfg.TRAIN_FEATURES_CHUNKS_DIR,
+            cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
+            cfg.DROP_COLS,
+            cfg.CAT_COLS,
+        )
 
     with log_time("train LightGBM"):
         train_lgbm(
-            cfg.TRAIN_MODEL_READY_PATH,
+            cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
             cfg.MODEL_PATH,
             feature_columns_path=cfg.FEATURE_COLUMNS_PATH,
             importance_path=cfg.IMPORTANCE_PATH,
