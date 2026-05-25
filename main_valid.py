@@ -1,12 +1,13 @@
 import polars as pl
 from src import config as cfg
+from src.cleanup import cleanup_paths
 from src.data_loader import load_data
 from src.splits import make_time_splits
 from src.candidates import build_valid_candidates
 from src.labels import make_ground_truth, make_labeled_dataset
-from src.features import build_features_chunked
+from src.features import build_feature_chunk, make_feature_sources
 from src.logging_utils import log_step, log_time
-from src.preprocess import prepare_valid_matrix_chunked
+from src.preprocess import get_preprocess_spec, prepare_matrix_lf, reset_output_dir
 from src.evaluate import (
     ground_truth_to_dict,
     predict_topk_from_parquet,
@@ -19,6 +20,20 @@ from src.evaluate import (
 def main():
     log_step("validation pipeline started")
     cfg.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    with log_time("clean stale validation intermediates"):
+        cleanup_paths([
+            cfg.VALID_FEATURES_CHUNKS_DIR,
+            cfg.VALID_MODEL_READY_CHUNKS_DIR,
+            cfg.VALID_FEATURES_PATH,
+            cfg.VALID_MODEL_READY_PATH,
+        ])
+        if cfg.PREPROCESS_METADATA_PATH.exists():
+            cleanup_paths([
+                cfg.TRAIN_FEATURES_CHUNKS_DIR,
+                cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
+                cfg.TRAIN_FEATURES_PATH,
+                cfg.TRAIN_MODEL_READY_PATH,
+            ])
 
     with log_time("load data and make time splits"):
         transactions_lf, items_lf = load_data(cfg.TRANSACTIONS_PATH, cfg.ITEMS_PATH)
@@ -56,24 +71,44 @@ def main():
         valid_dataset_lf = make_labeled_dataset(valid_candidates_lf, valid_gt_lf)
         valid_dataset_lf.sink_parquet(cfg.VALID_DATASET_LABELS_PATH)
         valid_dataset_lf = pl.scan_parquet(cfg.VALID_DATASET_LABELS_PATH)
+        cleanup_paths([
+            cfg.VALID_CANDIDATES_PATH,
+            cfg.VALID_GT_PATH,
+        ])
 
-    with log_time("build validation features"):
-        valid_features_lf = build_features_chunked(
-            splits["valid_hist_lf"],
-            valid_dataset_lf,
-            items_lf,
-            cfg.VALID_FEATURES_CHUNKS_DIR,
-            n_chunks=cfg.FEATURE_BUILD_CHUNKS,
-        )
-
-    with log_time("prepare validation matrix"):
-        valid_model_lf, feature_cols = prepare_valid_matrix_chunked(
-            cfg.VALID_FEATURES_CHUNKS_DIR,
+    with log_time("prepare validation preprocess spec"):
+        numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
             cfg.TRAIN_FEATURES_CHUNKS_DIR,
-            cfg.VALID_MODEL_READY_CHUNKS_DIR,
             cfg.DROP_COLS,
             cfg.CAT_COLS,
+            metadata_path=cfg.PREPROCESS_METADATA_PATH,
         )
+        feature_cols = numeric_cols + cat_cols
+
+    with log_time("build validation features and prepare matrix"):
+        feature_sources = make_feature_sources(splits["valid_hist_lf"], items_lf)
+        output_dir = reset_output_dir(cfg.VALID_MODEL_READY_CHUNKS_DIR)
+        for chunk_idx in range(cfg.FEATURE_BUILD_CHUNKS):
+            chunk_name = f"part_{chunk_idx:03d}.parquet"
+            log_step(
+                "build+prepare validation chunk "
+                f"{chunk_idx + 1}/{cfg.FEATURE_BUILD_CHUNKS}: {chunk_name}"
+            )
+            chunk_features_lf = build_feature_chunk(
+                valid_dataset_lf,
+                feature_sources,
+                chunk_idx,
+                cfg.FEATURE_BUILD_CHUNKS,
+            )
+            chunk_model_lf = prepare_matrix_lf(
+                chunk_features_lf,
+                numeric_cols,
+                cat_cols,
+                category_mappings,
+                ["customer_id", "item_id", "target"],
+            )
+            chunk_model_lf.sink_parquet(output_dir / chunk_name)
+        cleanup_paths([cfg.VALID_DATASET_LABELS_PATH])
 
     with log_time("predict validation top-k"):
         top10 = predict_topk_from_parquet(

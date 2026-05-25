@@ -1,4 +1,7 @@
+import polars as pl
+
 from src import config as cfg
+from src.cleanup import cleanup_paths
 from src.data_loader import load_data
 from src.splits import make_time_splits
 from src.candidates import build_train_candidates
@@ -14,6 +17,13 @@ def main():
     cfg.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     cfg.MODEL_DIR.mkdir(parents=True, exist_ok=True)
     cfg.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with log_time("clean stale train intermediates"):
+        cleanup_paths([
+            cfg.TRAIN_FEATURES_CHUNKS_DIR,
+            cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
+            cfg.TRAIN_FEATURES_PATH,
+            cfg.TRAIN_MODEL_READY_PATH,
+        ])
 
     with log_time("load data and make time splits"):
         transactions_lf, items_lf = load_data(cfg.TRANSACTIONS_PATH, cfg.ITEMS_PATH)
@@ -41,13 +51,13 @@ def main():
             co_max_bill_items=cfg.COOCCURRENCE_MAX_BILL_ITEMS,
         )
         train_candidates_lf.sink_parquet(cfg.TRAIN_CANDIDATES_PATH)
-        train_candidates_lf = __import__("polars").scan_parquet(cfg.TRAIN_CANDIDATES_PATH)
+        train_candidates_lf = pl.scan_parquet(cfg.TRAIN_CANDIDATES_PATH)
 
     with log_time("create train labels"):
         train_gt_lf = make_ground_truth(splits["train_label_lf"])
         train_dataset_lf = make_labeled_dataset(train_candidates_lf, train_gt_lf)
         train_dataset_lf.sink_parquet(cfg.TRAIN_DATASET_LABELS_PATH)
-        train_dataset_lf = __import__("polars").scan_parquet(cfg.TRAIN_DATASET_LABELS_PATH)
+        train_dataset_lf = pl.scan_parquet(cfg.TRAIN_DATASET_LABELS_PATH)
 
     with log_time("build train features"):
         train_features_lf = build_features_chunked(
@@ -64,6 +74,7 @@ def main():
             cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
             cfg.DROP_COLS,
             cfg.CAT_COLS,
+            metadata_path=cfg.PREPROCESS_METADATA_PATH,
         )
 
     with log_time("train LightGBM"):
@@ -77,6 +88,16 @@ def main():
             positive_fraction=cfg.TRAIN_POSITIVE_FRACTION,
             max_train_rows=cfg.TRAIN_MAX_ROWS,
         )
+    if cfg.CLEAN_INTERMEDIATE_AFTER_TRAIN:
+        with log_time("clean train intermediates"):
+            cleanup_paths([
+                cfg.TRAIN_FEATURES_CHUNKS_DIR,
+                cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
+                cfg.TRAIN_CANDIDATES_PATH,
+                cfg.TRAIN_DATASET_LABELS_PATH,
+                cfg.TRAIN_FEATURES_PATH,
+                cfg.TRAIN_MODEL_READY_PATH,
+            ])
     log_step("train pipeline finished")
 
 

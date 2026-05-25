@@ -32,6 +32,7 @@ FINAL_MODEL_READY_CHUNKS_DIR = PROCESSED_DIR / "final_model_ready_chunks"
 
 MODEL_PATH = MODEL_DIR / "lgbm_baseline.pkl"
 FEATURE_COLUMNS_PATH = MODEL_DIR / "feature_columns.pkl"
+PREPROCESS_METADATA_PATH = MODEL_DIR / "preprocess_metadata.pkl"
 IMPORTANCE_PATH = OUTPUT_DIR / "feature_importance.csv"
 SUBMISSION_PATH = OUTPUT_DIR / "submission.pkl"
 
@@ -59,6 +60,7 @@ TRAIN_READ_BATCH_SIZE = 500_000
 TRAIN_NEGATIVE_RATIO = 3.0
 TRAIN_POSITIVE_FRACTION = 1.0
 TRAIN_MAX_ROWS = 3_000_000
+CLEAN_INTERMEDIATE_AFTER_TRAIN = True
 
 DROP_COLS = [
     "customer_id",

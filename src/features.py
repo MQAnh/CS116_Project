@@ -299,36 +299,36 @@ def join_features(
 
 def build_features(hist_lf, dataset_lf, items_lf):
     max_date = hist_lf.select(pl.col("date").max()).collect()[0, 0]
+    feature_sources = make_feature_sources(hist_lf, items_lf, max_date=max_date)
+    return join_features(dataset_lf, **feature_sources)
+
+
+def make_feature_sources(hist_lf, items_lf, max_date=None):
+    if max_date is None:
+        max_date = hist_lf.select(pl.col("date").max()).collect()[0, 0]
     item_meta_lf = make_item_meta(items_lf)
-    user_features_lf = make_user_features(hist_lf, max_date)
-    item_features_lf = make_item_features(hist_lf, item_meta_lf, max_date)
-    user_item_features_lf = make_user_item_features(hist_lf, max_date)
-    user_l1_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l1", "ul1", max_date)
-    user_l2_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "ul2", max_date)
-    user_l3_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l3", "ul3", max_date)
-    user_category_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "uc", max_date)
-    user_brand_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "brand", "ub", max_date)
-    user_manufacturer_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "manufacturer", "uman", max_date)
-    user_basket_features_lf = make_user_basket_features(hist_lf)
-    item_basket_features_lf = make_item_basket_features(hist_lf)
-    user_main_location_lf = make_user_main_location(hist_lf)
-    item_location_features_lf = make_item_location_features(hist_lf)
-    return join_features(
-        dataset_lf,
-        user_features_lf,
-        item_features_lf,
-        user_item_features_lf,
-        user_l1_features_lf,
-        user_l2_features_lf,
-        user_l3_features_lf,
-        user_category_features_lf,
-        user_brand_features_lf,
-        user_manufacturer_features_lf,
-        user_basket_features_lf,
-        item_basket_features_lf,
-        user_main_location_lf,
-        item_location_features_lf,
+    return {
+        "user_features_lf": make_user_features(hist_lf, max_date),
+        "item_features_lf": make_item_features(hist_lf, item_meta_lf, max_date),
+        "user_item_features_lf": make_user_item_features(hist_lf, max_date),
+        "user_l1_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l1", "ul1", max_date),
+        "user_l2_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "ul2", max_date),
+        "user_l3_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l3", "ul3", max_date),
+        "user_category_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "uc", max_date),
+        "user_brand_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "brand", "ub", max_date),
+        "user_manufacturer_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "manufacturer", "uman", max_date),
+        "user_basket_features_lf": make_user_basket_features(hist_lf),
+        "item_basket_features_lf": make_item_basket_features(hist_lf),
+        "user_main_location_lf": make_user_main_location(hist_lf),
+        "item_location_features_lf": make_item_location_features(hist_lf),
+    }
+
+
+def build_feature_chunk(dataset_lf, feature_sources, chunk_idx, n_chunks):
+    chunk_dataset_lf = dataset_lf.filter(
+        (pl.col("customer_id") % n_chunks) == chunk_idx
     )
+    return join_features(chunk_dataset_lf, **feature_sources)
 
 
 def build_features_chunked(hist_lf, dataset_lf, items_lf, output_dir, n_chunks=16):
@@ -337,43 +337,16 @@ def build_features_chunked(hist_lf, dataset_lf, items_lf, output_dir, n_chunks=1
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    max_date = hist_lf.select(pl.col("date").max()).collect()[0, 0]
-    item_meta_lf = make_item_meta(items_lf)
-    user_features_lf = make_user_features(hist_lf, max_date)
-    item_features_lf = make_item_features(hist_lf, item_meta_lf, max_date)
-    user_item_features_lf = make_user_item_features(hist_lf, max_date)
-    user_l1_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l1", "ul1", max_date)
-    user_l2_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "ul2", max_date)
-    user_l3_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l3", "ul3", max_date)
-    user_category_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "uc", max_date)
-    user_brand_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "brand", "ub", max_date)
-    user_manufacturer_features_lf = make_user_taxonomy_features(hist_lf, item_meta_lf, "manufacturer", "uman", max_date)
-    user_basket_features_lf = make_user_basket_features(hist_lf)
-    item_basket_features_lf = make_item_basket_features(hist_lf)
-    user_main_location_lf = make_user_main_location(hist_lf)
-    item_location_features_lf = make_item_location_features(hist_lf)
+    feature_sources = make_feature_sources(hist_lf, items_lf)
 
     for chunk_idx in range(n_chunks):
         chunk_path = output_dir / f"part_{chunk_idx:03d}.parquet"
         log_step(f"build features chunk {chunk_idx + 1}/{n_chunks}: {chunk_path.name}")
-        chunk_dataset_lf = dataset_lf.filter(
-            (pl.col("customer_id") % n_chunks) == chunk_idx
-        )
-        chunk_features_lf = join_features(
-            chunk_dataset_lf,
-            user_features_lf,
-            item_features_lf,
-            user_item_features_lf,
-            user_l1_features_lf,
-            user_l2_features_lf,
-            user_l3_features_lf,
-            user_category_features_lf,
-            user_brand_features_lf,
-            user_manufacturer_features_lf,
-            user_basket_features_lf,
-            item_basket_features_lf,
-            user_main_location_lf,
-            item_location_features_lf,
+        chunk_features_lf = build_feature_chunk(
+            dataset_lf,
+            feature_sources,
+            chunk_idx,
+            n_chunks,
         )
         chunk_features_lf.sink_parquet(chunk_path)
 

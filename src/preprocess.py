@@ -1,5 +1,6 @@
 import shutil
 
+import joblib
 import polars as pl
 
 from src.logging_utils import log_step
@@ -66,6 +67,36 @@ def prepare_matrix_lf(features_lf, numeric_cols, cat_cols, category_mappings, id
     )
 
 
+def save_preprocess_metadata(metadata_path, numeric_cols, cat_cols, category_mappings):
+    if metadata_path is None:
+        return
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump({
+        "numeric_cols": numeric_cols,
+        "cat_cols": cat_cols,
+        "category_mappings": category_mappings,
+    }, metadata_path)
+
+
+def load_preprocess_metadata(metadata_path):
+    return joblib.load(metadata_path)
+
+
+def get_preprocess_spec(train_features_dir, drop_cols, cat_cols, metadata_path=None):
+    if metadata_path is not None and metadata_path.exists():
+        metadata = load_preprocess_metadata(metadata_path)
+        return (
+            metadata["numeric_cols"],
+            metadata["cat_cols"],
+            metadata["category_mappings"],
+        )
+
+    train_features_lf = scan_parquet_dir(train_features_dir)
+    numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
+    category_mappings = build_category_mappings(train_features_lf, cat_cols)
+    return numeric_cols, cat_cols, category_mappings
+
+
 def prepare_train_matrix(train_features_lf, drop_cols, cat_cols):
     numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
     category_mappings = build_category_mappings(train_features_lf, cat_cols)
@@ -79,10 +110,11 @@ def prepare_train_matrix(train_features_lf, drop_cols, cat_cols):
     return train_model_lf, feature_cols
 
 
-def prepare_train_matrix_chunked(train_features_dir, output_dir, drop_cols, cat_cols):
+def prepare_train_matrix_chunked(train_features_dir, output_dir, drop_cols, cat_cols, metadata_path=None):
     all_train_features_lf = scan_parquet_dir(train_features_dir)
     numeric_cols = infer_numeric_cols(all_train_features_lf, drop_cols, cat_cols)
     category_mappings = build_category_mappings(all_train_features_lf, cat_cols)
+    save_preprocess_metadata(metadata_path, numeric_cols, cat_cols, category_mappings)
     output_dir = reset_output_dir(output_dir)
 
     for idx, part_path in enumerate(sorted(train_features_dir.glob("*.parquet")), start=1):
@@ -114,10 +146,20 @@ def prepare_valid_matrix(valid_features_lf, train_features_lf, drop_cols, cat_co
     return valid_model_lf, feature_cols
 
 
-def prepare_valid_matrix_chunked(valid_features_dir, train_features_dir, output_dir, drop_cols, cat_cols):
-    train_features_lf = scan_parquet_dir(train_features_dir)
-    numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
-    category_mappings = build_category_mappings(train_features_lf, cat_cols)
+def prepare_valid_matrix_chunked(
+    valid_features_dir,
+    train_features_dir,
+    output_dir,
+    drop_cols,
+    cat_cols,
+    metadata_path=None,
+):
+    numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
+        train_features_dir,
+        drop_cols,
+        cat_cols,
+        metadata_path=metadata_path,
+    )
     output_dir = reset_output_dir(output_dir)
 
     for idx, part_path in enumerate(sorted(valid_features_dir.glob("*.parquet")), start=1):
@@ -149,10 +191,20 @@ def prepare_inference_matrix(features_lf, train_features_lf, drop_cols, cat_cols
     return model_lf, feature_cols
 
 
-def prepare_inference_matrix_chunked(features_dir, train_features_dir, output_dir, drop_cols, cat_cols):
-    train_features_lf = scan_parquet_dir(train_features_dir)
-    numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
-    category_mappings = build_category_mappings(train_features_lf, cat_cols)
+def prepare_inference_matrix_chunked(
+    features_dir,
+    train_features_dir,
+    output_dir,
+    drop_cols,
+    cat_cols,
+    metadata_path=None,
+):
+    numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
+        train_features_dir,
+        drop_cols,
+        cat_cols,
+        metadata_path=metadata_path,
+    )
     output_dir = reset_output_dir(output_dir)
 
     for idx, part_path in enumerate(sorted(features_dir.glob("*.parquet")), start=1):

@@ -1,6 +1,7 @@
 import polars as pl
 
 from src import config as cfg
+from src.cleanup import cleanup_paths
 from src.candidates import build_valid_candidates
 from src.data_loader import load_data
 from src.evaluate import (
@@ -8,9 +9,9 @@ from src.evaluate import (
     save_submission_pickle,
     topk_to_submission_dict,
 )
-from src.features import build_features_chunked
+from src.features import build_feature_chunk, make_feature_sources
 from src.logging_utils import log_step, log_time
-from src.preprocess import prepare_inference_matrix_chunked
+from src.preprocess import get_preprocess_spec, prepare_matrix_lf, reset_output_dir
 from src.splits import make_time_splits
 
 
@@ -18,6 +19,20 @@ def main():
     log_step("submission pipeline started")
     cfg.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     cfg.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with log_time("clean stale submission intermediates"):
+        cleanup_paths([
+            cfg.FINAL_FEATURES_CHUNKS_DIR,
+            cfg.FINAL_MODEL_READY_CHUNKS_DIR,
+            cfg.FINAL_FEATURES_PATH,
+            cfg.FINAL_MODEL_READY_PATH,
+        ])
+        if cfg.PREPROCESS_METADATA_PATH.exists():
+            cleanup_paths([
+                cfg.TRAIN_FEATURES_CHUNKS_DIR,
+                cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
+                cfg.TRAIN_FEATURES_PATH,
+                cfg.TRAIN_MODEL_READY_PATH,
+            ])
 
     with log_time("load data and make time splits"):
         transactions_lf, items_lf = load_data(cfg.TRANSACTIONS_PATH, cfg.ITEMS_PATH)
@@ -47,23 +62,37 @@ def main():
         final_candidates_lf.sink_parquet(cfg.FINAL_CANDIDATES_PATH)
         final_candidates_lf = pl.scan_parquet(cfg.FINAL_CANDIDATES_PATH)
 
-    with log_time("build final features"):
-        final_features_lf = build_features_chunked(
-            splits["final_hist_lf"],
-            final_candidates_lf,
-            items_lf,
-            cfg.FINAL_FEATURES_CHUNKS_DIR,
-            n_chunks=cfg.FEATURE_BUILD_CHUNKS,
-        )
-
-    with log_time("prepare final matrix"):
-        final_model_lf, _ = prepare_inference_matrix_chunked(
-            cfg.FINAL_FEATURES_CHUNKS_DIR,
+    with log_time("prepare final preprocess spec"):
+        numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
             cfg.TRAIN_FEATURES_CHUNKS_DIR,
-            cfg.FINAL_MODEL_READY_CHUNKS_DIR,
             cfg.DROP_COLS,
             cfg.CAT_COLS,
+            metadata_path=cfg.PREPROCESS_METADATA_PATH,
         )
+
+    with log_time("build final features and prepare matrix"):
+        feature_sources = make_feature_sources(splits["final_hist_lf"], items_lf)
+        output_dir = reset_output_dir(cfg.FINAL_MODEL_READY_CHUNKS_DIR)
+        for chunk_idx in range(cfg.FEATURE_BUILD_CHUNKS):
+            chunk_name = f"part_{chunk_idx:03d}.parquet"
+            log_step(
+                "build+prepare final chunk "
+                f"{chunk_idx + 1}/{cfg.FEATURE_BUILD_CHUNKS}: {chunk_name}"
+            )
+            chunk_features_lf = build_feature_chunk(
+                final_candidates_lf,
+                feature_sources,
+                chunk_idx,
+                cfg.FEATURE_BUILD_CHUNKS,
+            )
+            chunk_model_lf = prepare_matrix_lf(
+                chunk_features_lf,
+                numeric_cols,
+                cat_cols,
+                category_mappings,
+                ["customer_id", "item_id"],
+            )
+            chunk_model_lf.sink_parquet(output_dir / chunk_name)
 
     with log_time("predict final top-k"):
         top10 = predict_topk_from_parquet(
