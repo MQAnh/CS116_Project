@@ -75,6 +75,7 @@ def main():
             cfg.DROP_COLS,
             cfg.CAT_COLS,
             metadata_path=cfg.PREPROCESS_METADATA_PATH,
+            selected_features=cfg.SELECTED_FEATURES if cfg.FEATURE_SELECTION_ENABLED else None,
         )
 
     with log_time("train LightGBM"):

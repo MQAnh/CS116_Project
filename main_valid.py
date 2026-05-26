@@ -10,10 +10,16 @@ from src.logging_utils import log_step, log_time
 from src.preprocess import get_preprocess_spec, prepare_matrix_lf, reset_output_dir
 from src.evaluate import (
     ground_truth_to_dict,
+    print_candidate_recall_report,
     predict_topk_from_parquet,
     server_precision_at_k,
     topk_to_submission_dict,
     save_submission_pickle,
+)
+from src.fallbacks import (
+    collect_user_ids,
+    popular_items,
+    recent_history_fallback_by_user,
 )
 
 
@@ -71,6 +77,9 @@ def main():
         valid_dataset_lf = make_labeled_dataset(valid_candidates_lf, valid_gt_lf)
         valid_dataset_lf.sink_parquet(cfg.VALID_DATASET_LABELS_PATH)
         valid_dataset_lf = pl.scan_parquet(cfg.VALID_DATASET_LABELS_PATH)
+
+    with log_time("estimate validation candidate recall"):
+        print_candidate_recall_report(valid_dataset_lf, valid_gt_lf, k=10)
         cleanup_paths([
             cfg.VALID_CANDIDATES_PATH,
             cfg.VALID_GT_PATH,
@@ -82,6 +91,7 @@ def main():
             cfg.DROP_COLS,
             cfg.CAT_COLS,
             metadata_path=cfg.PREPROCESS_METADATA_PATH,
+            selected_features=cfg.SELECTED_FEATURES if cfg.FEATURE_SELECTION_ENABLED else None,
         )
         feature_cols = numeric_cols + cat_cols
 
@@ -118,10 +128,37 @@ def main():
             id_cols=["customer_id", "item_id", "target"],
             k=10,
             batch_size=cfg.PREDICT_BATCH_SIZE,
+            repeat_boost=cfg.RERANK_REPEAT_BOOST,
+            affinity_boost=cfg.RERANK_AFFINITY_BOOST,
+            popularity_penalty=cfg.RERANK_POPULARITY_PENALTY,
         )
 
+    with log_time("prepare validation fallback items"):
+        history_user_ids_lf = splits["valid_hist_lf"].select("customer_id").unique()
+        predicted_user_ids_lf = pl.LazyFrame({
+            "customer_id": top10["customer_id"].astype("int32").unique()
+        })
+        missing_prediction_user_ids_lf = history_user_ids_lf.join(
+            predicted_user_ids_lf,
+            on="customer_id",
+            how="anti",
+        )
+        user_ids = collect_user_ids(history_user_ids_lf)
+        fallback_by_user = recent_history_fallback_by_user(
+            splits["valid_hist_lf"],
+            user_ids_lf=missing_prediction_user_ids_lf,
+            k=10,
+        )
+        fallback_items = popular_items(splits["valid_hist_lf"], top_k=cfg.POPULAR_TOP_K)
+
     with log_time("evaluate validation predictions"):
-        submission_dict = topk_to_submission_dict(top10)
+        submission_dict = topk_to_submission_dict(
+            top10,
+            k=10,
+            user_ids=user_ids,
+            fallback_items=fallback_items,
+            fallback_by_user=fallback_by_user,
+        )
         answer_dict = ground_truth_to_dict(splits["valid_label_lf"])
         print("Server Precision@10:", server_precision_at_k(submission_dict, answer_dict, k=10))
 

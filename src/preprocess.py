@@ -1,4 +1,5 @@
 import shutil
+from pathlib import Path
 
 import joblib
 import polars as pl
@@ -7,9 +8,34 @@ from src.logging_utils import log_step
 
 
 def infer_numeric_cols(features_lf, drop_cols, cat_cols):
+    numeric_cols, _ = infer_feature_columns(features_lf, drop_cols, cat_cols)
+    return numeric_cols
+
+
+def infer_feature_columns(features_lf, drop_cols, cat_cols, selected_features=None):
+    schema = features_lf.collect_schema()
+    selected = set(selected_features) if selected_features else None
+    cat_col_set = set(cat_cols)
+
+    active_cat_cols = [
+        c for c in cat_cols
+        if c in schema and (selected is None or c in selected)
+    ]
+    numeric_cols = [
+        c for c, dtype in schema.items()
+        if c not in drop_cols
+        and c not in cat_col_set
+        and (selected is None or c in selected)
+    ]
+    return numeric_cols, active_cat_cols
+
+
+def selected_features_for_metadata(selected_features):
+    if selected_features is None:
+        return None
     return [
-        c for c, dtype in features_lf.collect_schema().items()
-        if c not in drop_cols + cat_cols
+        str(feature)
+        for feature in selected_features
     ]
 
 
@@ -47,6 +73,19 @@ def fill_numeric_exprs(numeric_cols):
 
 
 def scan_parquet_dir(path):
+    path = Path(path)
+    if path.is_file():
+        return pl.scan_parquet(path)
+
+    files = sorted(path.glob("*.parquet")) if path.exists() else []
+    if files:
+        return pl.scan_parquet([str(file_path) for file_path in files])
+
+    if path.name.endswith("_chunks"):
+        fallback_path = path.with_name(f"{path.name.removesuffix('_chunks')}.parquet")
+        if fallback_path.exists():
+            return pl.scan_parquet(fallback_path)
+
     return pl.scan_parquet(str(path / "*.parquet"))
 
 
@@ -67,7 +106,13 @@ def prepare_matrix_lf(features_lf, numeric_cols, cat_cols, category_mappings, id
     )
 
 
-def save_preprocess_metadata(metadata_path, numeric_cols, cat_cols, category_mappings):
+def save_preprocess_metadata(
+    metadata_path,
+    numeric_cols,
+    cat_cols,
+    category_mappings,
+    selected_features=None,
+):
     if metadata_path is None:
         return
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,6 +120,7 @@ def save_preprocess_metadata(metadata_path, numeric_cols, cat_cols, category_map
         "numeric_cols": numeric_cols,
         "cat_cols": cat_cols,
         "category_mappings": category_mappings,
+        "selected_features": selected_features_for_metadata(selected_features),
     }, metadata_path)
 
 
@@ -82,7 +128,13 @@ def load_preprocess_metadata(metadata_path):
     return joblib.load(metadata_path)
 
 
-def get_preprocess_spec(train_features_dir, drop_cols, cat_cols, metadata_path=None):
+def get_preprocess_spec(
+    train_features_dir,
+    drop_cols,
+    cat_cols,
+    metadata_path=None,
+    selected_features=None,
+):
     if metadata_path is not None and metadata_path.exists():
         metadata = load_preprocess_metadata(metadata_path)
         return (
@@ -92,13 +144,23 @@ def get_preprocess_spec(train_features_dir, drop_cols, cat_cols, metadata_path=N
         )
 
     train_features_lf = scan_parquet_dir(train_features_dir)
-    numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
+    numeric_cols, cat_cols = infer_feature_columns(
+        train_features_lf,
+        drop_cols,
+        cat_cols,
+        selected_features=selected_features,
+    )
     category_mappings = build_category_mappings(train_features_lf, cat_cols)
     return numeric_cols, cat_cols, category_mappings
 
 
-def prepare_train_matrix(train_features_lf, drop_cols, cat_cols):
-    numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
+def prepare_train_matrix(train_features_lf, drop_cols, cat_cols, selected_features=None):
+    numeric_cols, cat_cols = infer_feature_columns(
+        train_features_lf,
+        drop_cols,
+        cat_cols,
+        selected_features=selected_features,
+    )
     category_mappings = build_category_mappings(train_features_lf, cat_cols)
     train_model_lf = (
         train_features_lf
@@ -110,11 +172,29 @@ def prepare_train_matrix(train_features_lf, drop_cols, cat_cols):
     return train_model_lf, feature_cols
 
 
-def prepare_train_matrix_chunked(train_features_dir, output_dir, drop_cols, cat_cols, metadata_path=None):
+def prepare_train_matrix_chunked(
+    train_features_dir,
+    output_dir,
+    drop_cols,
+    cat_cols,
+    metadata_path=None,
+    selected_features=None,
+):
     all_train_features_lf = scan_parquet_dir(train_features_dir)
-    numeric_cols = infer_numeric_cols(all_train_features_lf, drop_cols, cat_cols)
+    numeric_cols, cat_cols = infer_feature_columns(
+        all_train_features_lf,
+        drop_cols,
+        cat_cols,
+        selected_features=selected_features,
+    )
     category_mappings = build_category_mappings(all_train_features_lf, cat_cols)
-    save_preprocess_metadata(metadata_path, numeric_cols, cat_cols, category_mappings)
+    save_preprocess_metadata(
+        metadata_path,
+        numeric_cols,
+        cat_cols,
+        category_mappings,
+        selected_features=selected_features,
+    )
     output_dir = reset_output_dir(output_dir)
 
     for idx, part_path in enumerate(sorted(train_features_dir.glob("*.parquet")), start=1):
@@ -133,8 +213,19 @@ def prepare_train_matrix_chunked(train_features_dir, output_dir, drop_cols, cat_
     return scan_parquet_dir(output_dir), feature_cols
 
 
-def prepare_valid_matrix(valid_features_lf, train_features_lf, drop_cols, cat_cols):
-    numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
+def prepare_valid_matrix(
+    valid_features_lf,
+    train_features_lf,
+    drop_cols,
+    cat_cols,
+    selected_features=None,
+):
+    numeric_cols, cat_cols = infer_feature_columns(
+        train_features_lf,
+        drop_cols,
+        cat_cols,
+        selected_features=selected_features,
+    )
     category_mappings = build_category_mappings(train_features_lf, cat_cols)
     valid_model_lf = (
         valid_features_lf
@@ -153,12 +244,14 @@ def prepare_valid_matrix_chunked(
     drop_cols,
     cat_cols,
     metadata_path=None,
+    selected_features=None,
 ):
     numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
         train_features_dir,
         drop_cols,
         cat_cols,
         metadata_path=metadata_path,
+        selected_features=selected_features,
     )
     output_dir = reset_output_dir(output_dir)
 
@@ -178,8 +271,19 @@ def prepare_valid_matrix_chunked(
     return scan_parquet_dir(output_dir), feature_cols
 
 
-def prepare_inference_matrix(features_lf, train_features_lf, drop_cols, cat_cols):
-    numeric_cols = infer_numeric_cols(train_features_lf, drop_cols, cat_cols)
+def prepare_inference_matrix(
+    features_lf,
+    train_features_lf,
+    drop_cols,
+    cat_cols,
+    selected_features=None,
+):
+    numeric_cols, cat_cols = infer_feature_columns(
+        train_features_lf,
+        drop_cols,
+        cat_cols,
+        selected_features=selected_features,
+    )
     category_mappings = build_category_mappings(train_features_lf, cat_cols)
     model_lf = (
         features_lf
@@ -198,12 +302,14 @@ def prepare_inference_matrix_chunked(
     drop_cols,
     cat_cols,
     metadata_path=None,
+    selected_features=None,
 ):
     numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
         train_features_dir,
         drop_cols,
         cat_cols,
         metadata_path=metadata_path,
+        selected_features=selected_features,
     )
     output_dir = reset_output_dir(output_dir)
 

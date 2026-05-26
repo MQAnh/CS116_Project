@@ -1,5 +1,3 @@
-import polars as pl
-
 from src import config as cfg
 from src.cleanup import cleanup_paths
 from src.candidates import build_valid_candidates
@@ -8,6 +6,11 @@ from src.evaluate import (
     predict_topk_from_parquet,
     save_submission_pickle,
     topk_to_submission_dict,
+)
+from src.fallbacks import (
+    collect_user_ids,
+    popular_items,
+    recent_history_fallback_by_user,
 )
 from src.features import build_feature_chunk, make_feature_sources
 from src.logging_utils import log_step, log_time
@@ -68,6 +71,7 @@ def main():
             cfg.DROP_COLS,
             cfg.CAT_COLS,
             metadata_path=cfg.PREPROCESS_METADATA_PATH,
+            selected_features=cfg.SELECTED_FEATURES if cfg.FEATURE_SELECTION_ENABLED else None,
         )
 
     with log_time("build final features and prepare matrix"):
@@ -102,31 +106,26 @@ def main():
             id_cols=["customer_id", "item_id"],
             k=10,
             batch_size=cfg.PREDICT_BATCH_SIZE,
+            repeat_boost=cfg.RERANK_REPEAT_BOOST,
+            affinity_boost=cfg.RERANK_AFFINITY_BOOST,
+            popularity_penalty=cfg.RERANK_POPULARITY_PENALTY,
         )
 
     with log_time("prepare fallback items"):
-        user_ids = (
-            final_candidates_lf
-            .select("customer_id")
-            .unique()
-            .collect()
-            .get_column("customer_id")
-            .to_list()
+        history_user_ids_lf = splits["final_hist_lf"].select("customer_id").unique()
+        candidate_user_ids_lf = final_candidates_lf.select("customer_id").unique()
+        missing_candidate_user_ids_lf = history_user_ids_lf.join(
+            candidate_user_ids_lf,
+            on="customer_id",
+            how="anti",
         )
-        fallback_items = (
-            splits["final_hist_lf"]
-            .group_by("item_id")
-            .agg([
-                pl.col("customer_id").n_unique().alias("n_customers"),
-                pl.len().alias("n_transactions"),
-            ])
-            .sort(["n_customers", "n_transactions"], descending=[True, True])
-            .head(50)
-            .select("item_id")
-            .collect()
-            .get_column("item_id")
-            .to_list()
+        user_ids = collect_user_ids(history_user_ids_lf)
+        fallback_by_user = recent_history_fallback_by_user(
+            splits["final_hist_lf"],
+            user_ids_lf=missing_candidate_user_ids_lf,
+            k=10,
         )
+        fallback_items = popular_items(splits["final_hist_lf"], top_k=cfg.POPULAR_TOP_K)
 
     with log_time("save final submission pickle"):
         submission_dict = topk_to_submission_dict(
@@ -134,6 +133,7 @@ def main():
             k=10,
             user_ids=user_ids,
             fallback_items=fallback_items,
+            fallback_by_user=fallback_by_user,
         )
         save_submission_pickle(submission_dict, cfg.SUBMISSION_PATH)
     log_step("submission pipeline finished")

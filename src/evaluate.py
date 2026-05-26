@@ -4,6 +4,7 @@ import heapq
 import joblib
 import numpy as np
 import pandas as pd
+import polars as pl
 import pyarrow.parquet as pq
 from pathlib import Path
 
@@ -228,7 +229,178 @@ def server_precision_at_k(submission, answer, k=10, scale=100):
 
     return (sum(precisions) / len(precisions)) * scale
 
-def topk_to_submission_dict(topk_df, k=10, user_ids=None, fallback_items=None):
+
+def _fmt_int(value):
+    return f"{int(value):,}"
+
+
+def _fmt_float(value, digits=2):
+    if value is None:
+        return "n/a"
+    return f"{float(value):,.{digits}f}"
+
+
+def _fmt_pct(value):
+    return f"{float(value) * 100:,.2f}%"
+
+
+def print_candidate_recall_report(candidates_lf, ground_truth_lf, k=10):
+    """
+    Print candidate-set diagnostics before feature building.
+
+    Pair recall = true (customer_id, item_id) pairs covered by candidates.
+    User hit recall = validation users with at least one true item in candidates.
+    Oracle P@k = server P@k upper bound if candidate ranking were perfect.
+    """
+    schema = candidates_lf.collect_schema()
+    if "target" not in schema:
+        raise ValueError("Candidate recall report needs a labeled candidate set with a target column.")
+
+    candidate_counts_lf = (
+        candidates_lf
+        .group_by("customer_id")
+        .agg(pl.len().alias("n_candidates"))
+    )
+    gt_user_counts_lf = (
+        ground_truth_lf
+        .group_by("customer_id")
+        .agg(pl.len().alias("n_true_items"))
+    )
+    candidate_hits_lf = (
+        candidates_lf
+        .group_by("customer_id")
+        .agg(pl.col("target").sum().alias("n_candidate_hits"))
+    )
+
+    global_stats = candidates_lf.select([
+        pl.len().alias("candidate_pairs"),
+        pl.col("customer_id").n_unique().alias("candidate_users"),
+        pl.col("item_id").n_unique().alias("candidate_items"),
+        pl.col("target").sum().alias("candidate_hit_pairs"),
+    ]).collect().to_dicts()[0]
+
+    gt_stats = ground_truth_lf.select([
+        pl.len().alias("gt_pairs"),
+        pl.col("customer_id").n_unique().alias("gt_users"),
+        pl.col("item_id").n_unique().alias("gt_items"),
+    ]).collect().to_dicts()[0]
+
+    candidate_user_count_stats = candidate_counts_lf.select([
+        pl.len().alias("users"),
+        pl.col("n_candidates").min().alias("min"),
+        pl.col("n_candidates").mean().alias("mean"),
+        pl.col("n_candidates").median().alias("median"),
+        pl.col("n_candidates").quantile(0.75).alias("p75"),
+        pl.col("n_candidates").quantile(0.90).alias("p90"),
+        pl.col("n_candidates").quantile(0.95).alias("p95"),
+        pl.col("n_candidates").max().alias("max"),
+    ]).collect().to_dicts()[0]
+
+    label_user_count_stats = (
+        gt_user_counts_lf
+        .select("customer_id")
+        .join(candidate_counts_lf, on="customer_id", how="left")
+        .with_columns(pl.col("n_candidates").fill_null(0))
+        .select([
+            pl.len().alias("users"),
+            pl.col("n_candidates").min().alias("min"),
+            pl.col("n_candidates").mean().alias("mean"),
+            pl.col("n_candidates").median().alias("median"),
+            pl.col("n_candidates").quantile(0.75).alias("p75"),
+            pl.col("n_candidates").quantile(0.90).alias("p90"),
+            pl.col("n_candidates").quantile(0.95).alias("p95"),
+            pl.col("n_candidates").max().alias("max"),
+            (pl.col("n_candidates") == 0).sum().alias("zero_candidate_users"),
+        ])
+        .collect()
+        .to_dicts()[0]
+    )
+
+    recall_stats = (
+        gt_user_counts_lf
+        .join(candidate_hits_lf, on="customer_id", how="left")
+        .with_columns(pl.col("n_candidate_hits").fill_null(0))
+        .with_columns(
+            (pl.col("n_candidate_hits") / pl.col("n_true_items")).alias("candidate_recall")
+        )
+        .select([
+            (pl.col("n_candidate_hits") > 0).sum().alias("users_with_hit"),
+            pl.col("n_candidate_hits").sum().alias("hit_pairs"),
+            pl.col("n_candidate_hits").clip(upper_bound=k).sum().alias("oracle_hits_at_k"),
+            pl.col("candidate_recall").mean().alias("avg_user_recall"),
+            pl.col("candidate_recall").median().alias("median_user_recall"),
+            pl.col("candidate_recall").min().alias("min_user_recall"),
+            pl.col("candidate_recall").max().alias("max_user_recall"),
+        ])
+        .collect()
+        .to_dicts()[0]
+    )
+
+    gt_pairs = gt_stats["gt_pairs"]
+    gt_users = gt_stats["gt_users"]
+    pair_recall = recall_stats["hit_pairs"] / gt_pairs if gt_pairs else 0
+    user_hit_recall = recall_stats["users_with_hit"] / gt_users if gt_users else 0
+    oracle_p_at_k = (
+        recall_stats["oracle_hits_at_k"] / (gt_users * k)
+        if gt_users
+        else 0
+    )
+
+    print("\nCandidate recall report")
+    print(
+        "  Ground truth: "
+        f"users={_fmt_int(gt_users)}, pairs={_fmt_int(gt_pairs)}, "
+        f"items={_fmt_int(gt_stats['gt_items'])}"
+    )
+    print(
+        "  Candidates: "
+        f"users={_fmt_int(global_stats['candidate_users'])}, "
+        f"pairs={_fmt_int(global_stats['candidate_pairs'])}, "
+        f"items={_fmt_int(global_stats['candidate_items'])}"
+    )
+    print(
+        "  Recall: "
+        f"pair={_fmt_pct(pair_recall)}, "
+        f"user_hit={_fmt_pct(user_hit_recall)}, "
+        f"avg_user={_fmt_pct(recall_stats['avg_user_recall'])}, "
+        f"median_user={_fmt_pct(recall_stats['median_user_recall'])}, "
+        f"oracle_P@{k}={oracle_p_at_k * 100:,.4f}"
+    )
+    print(
+        "  Hits: "
+        f"hit_pairs={_fmt_int(recall_stats['hit_pairs'])}, "
+        f"users_with_hit={_fmt_int(recall_stats['users_with_hit'])}"
+    )
+    print(
+        "  Candidate items per candidate user: "
+        f"min={_fmt_int(candidate_user_count_stats['min'])}, "
+        f"mean={_fmt_float(candidate_user_count_stats['mean'])}, "
+        f"median={_fmt_float(candidate_user_count_stats['median'])}, "
+        f"p75={_fmt_float(candidate_user_count_stats['p75'])}, "
+        f"p90={_fmt_float(candidate_user_count_stats['p90'])}, "
+        f"p95={_fmt_float(candidate_user_count_stats['p95'])}, "
+        f"max={_fmt_int(candidate_user_count_stats['max'])}"
+    )
+    print(
+        "  Candidate items per label user: "
+        f"min={_fmt_int(label_user_count_stats['min'])}, "
+        f"mean={_fmt_float(label_user_count_stats['mean'])}, "
+        f"median={_fmt_float(label_user_count_stats['median'])}, "
+        f"p75={_fmt_float(label_user_count_stats['p75'])}, "
+        f"p90={_fmt_float(label_user_count_stats['p90'])}, "
+        f"p95={_fmt_float(label_user_count_stats['p95'])}, "
+        f"max={_fmt_int(label_user_count_stats['max'])}, "
+        f"zero_users={_fmt_int(label_user_count_stats['zero_candidate_users'])}"
+    )
+
+
+def topk_to_submission_dict(
+    topk_df,
+    k=10,
+    user_ids=None,
+    fallback_items=None,
+    fallback_by_user=None,
+):
     """
     Convert dataframe top-k prediction thành:
 
@@ -248,7 +420,7 @@ def topk_to_submission_dict(topk_df, k=10, user_ids=None, fallback_items=None):
     )
 
     for row in rows:
-        customer_id = row["customer_id"]
+        customer_id = int(row["customer_id"])
         item_id = row["item_id"]
 
         if customer_id not in submission:
@@ -259,8 +431,15 @@ def topk_to_submission_dict(topk_df, k=10, user_ids=None, fallback_items=None):
 
     if user_ids is not None:
         fallback_items = [] if fallback_items is None else list(fallback_items)
+        fallback_by_user = {} if fallback_by_user is None else fallback_by_user
         for customer_id in user_ids:
+            customer_id = int(customer_id)
             items = submission.setdefault(customer_id, [])
+            for item_id in fallback_by_user.get(customer_id, []):
+                if len(items) >= k:
+                    break
+                if item_id not in items:
+                    items.append(item_id)
             for item_id in fallback_items:
                 if len(items) >= k:
                     break

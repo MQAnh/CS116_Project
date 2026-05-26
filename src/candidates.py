@@ -12,15 +12,23 @@ def get_active_users(hist_lf, min_bills=2):
 
 
 def recent_candidates(hist_lf, active_users_lf, top_k=20, use_unique=True, source_name="recent"):
-    item_expr = pl.col("item_id").unique().head(top_k) if use_unique else pl.col("item_id").head(top_k)
     lf = (
         hist_lf
         .join(active_users_lf, on="customer_id", how="inner")
-        .sort(["customer_id", "updated_date"], descending=[False, True])
-        .group_by("customer_id")
-        .agg(item_expr.alias("candidate_items"))
-        .explode("candidate_items")
-        .rename({"candidate_items": "item_id"})
+        .group_by(["customer_id", "item_id"])
+        .agg([
+            pl.col("updated_date").max().alias("last_seen_at"),
+            pl.len().alias("recent_source_transactions"),
+        ])
+        .sort(
+            ["customer_id", "last_seen_at", "recent_source_transactions"],
+            descending=[False, True, True],
+        )
+        .with_columns(
+            pl.col("last_seen_at").rank("ordinal", descending=True).over("customer_id").alias("recent_rank")
+        )
+        .filter(pl.col("recent_rank") <= top_k)
+        .select(["customer_id", "item_id", "recent_rank"])
     )
     if source_name is not None:
         lf = lf.with_columns(pl.lit(source_name).alias("candidate_source"))
@@ -37,10 +45,11 @@ def frequent_candidates(hist_lf, active_users_lf, top_k=20, source_name="frequen
             pl.col("quantity").sum().alias("total_quantity"),
         ])
         .sort(["customer_id", "n_transactions", "total_quantity"], descending=[False, True, True])
-        .group_by("customer_id")
-        .agg(pl.col("item_id").head(top_k).alias("candidate_items"))
-        .explode("candidate_items")
-        .rename({"candidate_items": "item_id"})
+        .with_columns(
+            pl.col("n_transactions").rank("ordinal", descending=True).over("customer_id").alias("frequent_rank")
+        )
+        .filter(pl.col("frequent_rank") <= top_k)
+        .select(["customer_id", "item_id", "frequent_rank"])
     )
     if source_name is not None:
         lf = lf.with_columns(pl.lit(source_name).alias("candidate_source"))
@@ -57,8 +66,9 @@ def popular_candidates(hist_lf, active_users_lf, top_k=50, source_name="popular"
             pl.col("quantity").sum().alias("total_quantity"),
         ])
         .sort(["n_customers", "n_transactions"], descending=[True, True])
+        .with_columns(pl.col("n_customers").rank("ordinal", descending=True).alias("popular_rank"))
         .head(top_k)
-        .select("item_id")
+        .select(["item_id", "popular_rank"])
     )
     return active_users_lf.join(top_popular_items_lf, how="cross").with_columns(
         pl.lit(source_name).alias("candidate_source")
@@ -86,6 +96,9 @@ def category_popular_candidates(
         .group_by("customer_id")
         .agg(pl.col(category_col).head(user_top_categories).alias(category_col))
         .explode(category_col)
+        .with_columns(
+            pl.col(category_col).cum_count().over("customer_id").alias("user_category_rank")
+        )
     )
     category_items_lf = (
         hist_lf
@@ -101,13 +114,17 @@ def category_popular_candidates(
             [category_col, "n_customers", "n_transactions", "total_quantity"],
             descending=[False, True, True, True],
         )
-        .group_by(category_col)
-        .agg(pl.col("item_id").head(items_per_category).alias("item_id"))
-        .explode("item_id")
+        .with_columns(
+            pl.col("n_customers").rank("ordinal", descending=True).over(category_col).alias("category_item_rank")
+        )
+        .filter(pl.col("category_item_rank") <= items_per_category)
+        .select([category_col, "item_id", "category_item_rank"])
     )
     lf = user_categories_lf.join(category_items_lf, on=category_col, how="inner").select([
         "customer_id",
         "item_id",
+        "user_category_rank",
+        "category_item_rank",
     ])
     if source_name is not None:
         lf = lf.with_columns(pl.lit(source_name).alias("candidate_source"))
@@ -156,9 +173,11 @@ def cooccurrence_candidates(
         .group_by(["item_id", "item_id_co"])
         .agg(pl.len().alias("n_co_bills"))
         .sort(["item_id", "n_co_bills"], descending=[False, True])
-        .group_by("item_id")
-        .agg(pl.col("item_id_co").head(co_top_k).alias("candidate_item_id"))
-        .explode("candidate_item_id")
+        .with_columns(
+            pl.col("n_co_bills").rank("ordinal", descending=True).over("item_id").alias("cooccurrence_rank")
+        )
+        .filter(pl.col("cooccurrence_rank") <= co_top_k)
+        .select(["item_id", pl.col("item_id_co").alias("candidate_item_id"), "cooccurrence_rank"])
         .rename({"item_id": "anchor_item_id"})
     )
     lf = (
@@ -167,6 +186,7 @@ def cooccurrence_candidates(
         .select([
             "customer_id",
             pl.col("candidate_item_id").alias("item_id"),
+            "cooccurrence_rank",
         ])
     )
     if source_name is not None:
@@ -175,11 +195,25 @@ def cooccurrence_candidates(
 
 
 def merge_candidates(candidate_lfs):
+    rank_cols = [
+        "recent_rank",
+        "frequent_rank",
+        "popular_rank",
+        "user_category_rank",
+        "category_item_rank",
+        "cooccurrence_rank",
+    ]
     source_lfs = []
     for lf in candidate_lfs:
         if "candidate_source" not in lf.collect_schema():
             lf = lf.with_columns(pl.lit("unknown").alias("candidate_source"))
-        source_lfs.append(lf.select(["customer_id", "item_id", "candidate_source"]))
+        schema = lf.collect_schema()
+        lf = lf.with_columns([
+            pl.lit(None, dtype=pl.UInt32).alias(c)
+            for c in rank_cols
+            if c not in schema
+        ])
+        source_lfs.append(lf.select(["customer_id", "item_id", "candidate_source"] + rank_cols))
 
     return (
         pl.concat(source_lfs)
@@ -197,6 +231,7 @@ def merge_candidates(candidate_lfs):
             pl.col("is_category_candidate").max(),
             pl.col("is_cooccurrence_candidate").max(),
             pl.col("candidate_source").n_unique().alias("n_candidate_sources"),
+            *[pl.col(c).min().fill_null(9999).cast(pl.Int32).alias(c) for c in rank_cols],
         ])
     )
 

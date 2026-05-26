@@ -254,7 +254,7 @@ def join_features(
         .join(user_l1_features_lf, on=["customer_id", "category_l1"], how="left")
         .join(user_l2_features_lf, on=["customer_id", "category_l2"], how="left")
         .join(user_l3_features_lf, on=["customer_id", "category_l3"], how="left")
-        .join(user_category_features_lf, on=["customer_id", "category_l2"], how="left")
+        .join(user_category_features_lf, on=["customer_id", "category"], how="left")
         .join(user_brand_features_lf, on=["customer_id", "brand"], how="left")
         .join(user_manufacturer_features_lf, on=["customer_id", "manufacturer"], how="left")
         .join(user_item_features_lf, on=["customer_id", "item_id"], how="left")
@@ -314,7 +314,7 @@ def make_feature_sources(hist_lf, items_lf, max_date=None):
         "user_l1_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l1", "ul1", max_date),
         "user_l2_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "ul2", max_date),
         "user_l3_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l3", "ul3", max_date),
-        "user_category_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category_l2", "uc", max_date),
+        "user_category_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "category", "uc", max_date),
         "user_brand_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "brand", "ub", max_date),
         "user_manufacturer_features_lf": make_user_taxonomy_features(hist_lf, item_meta_lf, "manufacturer", "uman", max_date),
         "user_basket_features_lf": make_user_basket_features(hist_lf),
