@@ -39,6 +39,13 @@ def selected_features_for_metadata(selected_features):
     ]
 
 
+def inference_selected_features(feature_columns_path, fallback_selected_features=None):
+    feature_columns_path = Path(feature_columns_path)
+    if feature_columns_path.exists():
+        return joblib.load(feature_columns_path)
+    return fallback_selected_features
+
+
 def build_category_mappings(train_features_lf, cat_cols):
     mappings = {}
     for c in cat_cols:
@@ -137,11 +144,21 @@ def get_preprocess_spec(
 ):
     if metadata_path is not None and metadata_path.exists():
         metadata = load_preprocess_metadata(metadata_path)
-        return (
-            metadata["numeric_cols"],
-            metadata["cat_cols"],
-            metadata["category_mappings"],
+        expected_selected_features = selected_features_for_metadata(selected_features)
+        metadata_selected_features = metadata.get("selected_features")
+        metadata_matches_selection = (
+            expected_selected_features is None
+            or (
+                metadata_selected_features is not None
+                and set(metadata_selected_features) == set(expected_selected_features)
+            )
         )
+        if metadata_matches_selection:
+            return (
+                metadata["numeric_cols"],
+                metadata["cat_cols"],
+                metadata["category_mappings"],
+            )
 
     train_features_lf = scan_parquet_dir(train_features_dir)
     numeric_cols, cat_cols = infer_feature_columns(

@@ -14,7 +14,12 @@ from src.fallbacks import (
 )
 from src.features import build_feature_chunk, make_feature_sources
 from src.logging_utils import log_step, log_time
-from src.preprocess import get_preprocess_spec, prepare_matrix_lf, reset_output_dir
+from src.preprocess import (
+    get_preprocess_spec,
+    inference_selected_features,
+    prepare_matrix_lf,
+    reset_output_dir,
+)
 from src.splits import make_time_splits
 
 
@@ -61,17 +66,22 @@ def main():
             co_anchor_top_k=cfg.COOCCURRENCE_ANCHOR_TOP_K,
             co_top_k=cfg.COOCCURRENCE_TOP_K,
             co_max_bill_items=cfg.COOCCURRENCE_MAX_BILL_ITEMS,
+            include_cooccurrence=cfg.FINAL_COOCCURRENCE_ENABLED,
         )
         final_candidates_lf.sink_parquet(cfg.FINAL_CANDIDATES_PATH)
         final_candidates_lf = pl.scan_parquet(cfg.FINAL_CANDIDATES_PATH)
 
     with log_time("prepare final preprocess spec"):
+        selected_features = inference_selected_features(
+            cfg.FEATURE_COLUMNS_PATH,
+            cfg.SELECTED_FEATURES if cfg.FEATURE_SELECTION_ENABLED else None,
+        )
         numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
             cfg.TRAIN_FEATURES_CHUNKS_DIR,
             cfg.DROP_COLS,
             cfg.CAT_COLS,
             metadata_path=cfg.PREPROCESS_METADATA_PATH,
-            selected_features=cfg.SELECTED_FEATURES if cfg.FEATURE_SELECTION_ENABLED else None,
+            selected_features=selected_features,
         )
 
     with log_time("build final features and prepare matrix"):

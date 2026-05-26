@@ -166,19 +166,32 @@ def cooccurrence_candidates(
             how="inner",
         )
     )
-    item_pairs_lf = (
+    anchor_items_lf = (
+        user_anchor_items_lf
+        .select(pl.col("anchor_item_id").alias("item_id"))
+        .unique()
+    )
+    anchor_bill_items_lf = (
         bill_items_lf
-        .join(bill_items_lf, on="bill_id", how="inner", suffix="_co")
-        .filter(pl.col("item_id") != pl.col("item_id_co"))
-        .group_by(["item_id", "item_id_co"])
+        .join(anchor_items_lf, on="item_id", how="inner")
+        .rename({"item_id": "anchor_item_id"})
+    )
+    item_pairs_lf = (
+        anchor_bill_items_lf
+        .join(bill_items_lf, on="bill_id", how="inner")
+        .filter(pl.col("anchor_item_id") != pl.col("item_id"))
+        .group_by(["anchor_item_id", "item_id"])
         .agg(pl.len().alias("n_co_bills"))
-        .sort(["item_id", "n_co_bills"], descending=[False, True])
+        .sort(["anchor_item_id", "n_co_bills"], descending=[False, True])
         .with_columns(
-            pl.col("n_co_bills").rank("ordinal", descending=True).over("item_id").alias("cooccurrence_rank")
+            pl.col("n_co_bills").rank("ordinal", descending=True).over("anchor_item_id").alias("cooccurrence_rank")
         )
         .filter(pl.col("cooccurrence_rank") <= co_top_k)
-        .select(["item_id", pl.col("item_id_co").alias("candidate_item_id"), "cooccurrence_rank"])
-        .rename({"item_id": "anchor_item_id"})
+        .select([
+            "anchor_item_id",
+            pl.col("item_id").alias("candidate_item_id"),
+            "cooccurrence_rank",
+        ])
     )
     lf = (
         user_anchor_items_lf
@@ -248,6 +261,7 @@ def build_train_candidates(
     co_anchor_top_k=20,
     co_top_k=10,
     co_max_bill_items=30,
+    include_cooccurrence=True,
 ):
     active_users_lf = get_active_users(train_hist_lf, min_bills=min_bills)
     recent_lf = recent_candidates(train_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=True)
@@ -262,13 +276,14 @@ def build_train_candidates(
             user_top_categories=user_top_categories,
             items_per_category=category_items_per_category,
         ))
-    candidate_lfs.append(cooccurrence_candidates(
-        train_hist_lf,
-        active_users_lf,
-        anchor_top_k=co_anchor_top_k,
-        co_top_k=co_top_k,
-        max_bill_items=co_max_bill_items,
-    ))
+    if include_cooccurrence:
+        candidate_lfs.append(cooccurrence_candidates(
+            train_hist_lf,
+            active_users_lf,
+            anchor_top_k=co_anchor_top_k,
+            co_top_k=co_top_k,
+            max_bill_items=co_max_bill_items,
+        ))
     return merge_candidates(candidate_lfs)
 
 
@@ -284,6 +299,7 @@ def build_valid_candidates(
     co_anchor_top_k=20,
     co_top_k=10,
     co_max_bill_items=30,
+    include_cooccurrence=True,
 ):
     active_users_lf = get_active_users(valid_hist_lf, min_bills=min_bills)
     recent_lf = recent_candidates(valid_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=False).unique(["customer_id", "item_id"])
@@ -298,11 +314,12 @@ def build_valid_candidates(
             user_top_categories=user_top_categories,
             items_per_category=category_items_per_category,
         ))
-    candidate_lfs.append(cooccurrence_candidates(
-        valid_hist_lf,
-        active_users_lf,
-        anchor_top_k=co_anchor_top_k,
-        co_top_k=co_top_k,
-        max_bill_items=co_max_bill_items,
-    ))
+    if include_cooccurrence:
+        candidate_lfs.append(cooccurrence_candidates(
+            valid_hist_lf,
+            active_users_lf,
+            anchor_top_k=co_anchor_top_k,
+            co_top_k=co_top_k,
+            max_bill_items=co_max_bill_items,
+        ))
     return merge_candidates(candidate_lfs)
