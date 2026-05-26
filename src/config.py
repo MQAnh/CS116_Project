@@ -48,7 +48,7 @@ FREQUENT_TOP_K_TRAIN = 10
 RECENT_TOP_K_VALID = 10
 FREQUENT_TOP_K_VALID = 10
 POPULAR_TOP_K = 50
-POPULAR_CANDIDATE_TOP_K = 5
+POPULAR_CANDIDATE_TOP_K = 0
 CATEGORY_CANDIDATE_COL = "category_l2"
 USER_TOP_CATEGORIES = 2
 CATEGORY_ITEMS_PER_CATEGORY = 10
@@ -149,8 +149,6 @@ SELECTED_FEATURES = [
     "uc_n_transactions",
     "ub_total_quantity",
     "user_n_transactions",
-    "popular_rank",
-    "is_popular_candidate",
 ]
 
 DROP_COLS = [
