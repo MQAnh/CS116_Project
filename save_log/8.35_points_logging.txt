@@ -1,0 +1,351 @@
+[2026-05-26 10:14:28] train pipeline started
+[2026-05-26 10:14:28] START clean stale train intermediates
+[2026-05-26 10:14:28] DONE  clean stale train intermediates (0.0s)
+[2026-05-26 10:14:28] START load data and make time splits
+[2026-05-26 10:14:28] DONE  load data and make time splits (0.0s)
+[2026-05-26 10:14:28] START build train candidates
+[2026-05-26 10:18:47] DONE  build train candidates (258.6s)
+[2026-05-26 10:18:47] START create train labels
+[2026-05-26 10:19:03] DONE  create train labels (16.2s)
+[2026-05-26 10:19:03] START build train features
+[2026-05-26 10:19:04] build features chunk 1/16: part_000.parquet
+[2026-05-26 10:22:28] build features chunk 2/16: part_001.parquet
+[2026-05-26 10:25:22] build features chunk 3/16: part_002.parquet
+[2026-05-26 10:28:29] build features chunk 4/16: part_003.parquet
+[2026-05-26 10:31:34] build features chunk 5/16: part_004.parquet
+[2026-05-26 10:35:21] build features chunk 6/16: part_005.parquet
+[2026-05-26 10:38:40] build features chunk 7/16: part_006.parquet
+[2026-05-26 10:42:05] build features chunk 8/16: part_007.parquet
+[2026-05-26 10:45:26] build features chunk 9/16: part_008.parquet
+[2026-05-26 10:48:36] build features chunk 10/16: part_009.parquet
+[2026-05-26 10:52:10] build features chunk 11/16: part_010.parquet
+[2026-05-26 10:55:22] build features chunk 12/16: part_011.parquet
+[2026-05-26 10:58:33] build features chunk 13/16: part_012.parquet
+[2026-05-26 11:02:39] build features chunk 14/16: part_013.parquet
+[2026-05-26 11:06:46] build features chunk 15/16: part_014.parquet
+[2026-05-26 11:11:18] build features chunk 16/16: part_015.parquet
+[2026-05-26 11:15:23] DONE  build train features (3379.8s)
+[2026-05-26 11:15:23] START prepare train matrix
+[2026-05-26 11:15:42] prepare train matrix chunk 1: part_000.parquet
+[2026-05-26 11:15:50] prepare train matrix chunk 2: part_001.parquet
+[2026-05-26 11:15:57] prepare train matrix chunk 3: part_002.parquet
+[2026-05-26 11:16:05] prepare train matrix chunk 4: part_003.parquet
+[2026-05-26 11:16:12] prepare train matrix chunk 5: part_004.parquet
+[2026-05-26 11:16:20] prepare train matrix chunk 6: part_005.parquet
+[2026-05-26 11:16:27] prepare train matrix chunk 7: part_006.parquet
+[2026-05-26 11:16:34] prepare train matrix chunk 8: part_007.parquet
+[2026-05-26 11:16:42] prepare train matrix chunk 9: part_008.parquet
+[2026-05-26 11:16:49] prepare train matrix chunk 10: part_009.parquet
+[2026-05-26 11:16:56] prepare train matrix chunk 11: part_010.parquet
+[2026-05-26 11:17:04] prepare train matrix chunk 12: part_011.parquet
+[2026-05-26 11:17:11] prepare train matrix chunk 13: part_012.parquet
+[2026-05-26 11:17:18] prepare train matrix chunk 14: part_013.parquet
+[2026-05-26 11:17:26] prepare train matrix chunk 15: part_014.parquet
+[2026-05-26 11:17:34] prepare train matrix chunk 16: part_015.parquet
+[2026-05-26 11:17:41] DONE  prepare train matrix (138.5s)
+[2026-05-26 11:17:41] START train LightGBM
+[2026-05-26 11:17:43] train sample batch 1: read 500,000/66,136,042 rows, kept 100,040/3,000,000 sampled rows
+[2026-05-26 11:17:44] train sample batch 2: read 1,000,000/66,136,042 rows, kept 200,972/3,000,000 sampled rows
+[2026-05-26 11:17:44] train sample batch 3: read 1,500,000/66,136,042 rows, kept 214,688/3,000,000 sampled rows
+[2026-05-26 11:17:45] train sample batch 4: read 2,000,000/66,136,042 rows, kept 224,604/3,000,000 sampled rows
+[2026-05-26 11:17:45] train sample batch 5: read 2,500,000/66,136,042 rows, kept 235,092/3,000,000 sampled rows
+[2026-05-26 11:17:46] train sample batch 6: read 3,000,000/66,136,042 rows, kept 245,056/3,000,000 sampled rows
+[2026-05-26 11:17:46] train sample batch 7: read 3,500,000/66,136,042 rows, kept 255,148/3,000,000 sampled rows
+[2026-05-26 11:17:47] train sample batch 8: read 4,000,000/66,136,042 rows, kept 265,340/3,000,000 sampled rows
+[2026-05-26 11:17:47] train sample batch 9: read 4,116,645/66,136,042 rows, kept 267,624/3,000,000 sampled rows
+[2026-05-26 11:17:47] train sample batch 10: read 4,616,645/66,136,042 rows, kept 368,452/3,000,000 sampled rows
+[2026-05-26 11:17:48] train sample batch 11: read 5,116,645/66,136,042 rows, kept 469,436/3,000,000 sampled rows
+[2026-05-26 11:17:48] train sample batch 12: read 5,616,645/66,136,042 rows, kept 484,500/3,000,000 sampled rows
+[2026-05-26 11:17:49] train sample batch 13: read 6,116,645/66,136,042 rows, kept 494,664/3,000,000 sampled rows
+[2026-05-26 11:17:49] train sample batch 14: read 6,616,645/66,136,042 rows, kept 505,008/3,000,000 sampled rows
+[2026-05-26 11:17:50] train sample batch 15: read 7,116,645/66,136,042 rows, kept 514,820/3,000,000 sampled rows
+[2026-05-26 11:17:50] train sample batch 16: read 7,616,645/66,136,042 rows, kept 525,192/3,000,000 sampled rows
+[2026-05-26 11:17:50] train sample batch 17: read 8,116,645/66,136,042 rows, kept 535,468/3,000,000 sampled rows
+[2026-05-26 11:17:50] train sample batch 18: read 8,247,054/66,136,042 rows, kept 538,256/3,000,000 sampled rows
+[2026-05-26 11:17:51] train sample batch 19: read 8,747,054/66,136,042 rows, kept 639,212/3,000,000 sampled rows
+[2026-05-26 11:17:52] train sample batch 20: read 9,247,054/66,136,042 rows, kept 740,728/3,000,000 sampled rows
+[2026-05-26 11:17:52] train sample batch 21: read 9,747,054/66,136,042 rows, kept 755,976/3,000,000 sampled rows
+[2026-05-26 11:17:53] train sample batch 22: read 10,247,054/66,136,042 rows, kept 766,124/3,000,000 sampled rows
+[2026-05-26 11:17:53] train sample batch 23: read 10,747,054/66,136,042 rows, kept 776,312/3,000,000 sampled rows
+[2026-05-26 11:17:54] train sample batch 24: read 11,247,054/66,136,042 rows, kept 786,452/3,000,000 sampled rows
+[2026-05-26 11:17:54] train sample batch 25: read 11,747,054/66,136,042 rows, kept 797,000/3,000,000 sampled rows
+[2026-05-26 11:17:55] train sample batch 26: read 12,247,054/66,136,042 rows, kept 807,764/3,000,000 sampled rows
+[2026-05-26 11:17:55] train sample batch 27: read 12,371,631/66,136,042 rows, kept 810,292/3,000,000 sampled rows
+[2026-05-26 11:17:55] train sample batch 28: read 12,871,631/66,136,042 rows, kept 911,344/3,000,000 sampled rows
+[2026-05-26 11:17:56] train sample batch 29: read 13,371,631/66,136,042 rows, kept 1,011,816/3,000,000 sampled rows
+[2026-05-26 11:17:56] train sample batch 30: read 13,871,631/66,136,042 rows, kept 1,027,088/3,000,000 sampled rows
+[2026-05-26 11:17:57] train sample batch 31: read 14,371,631/66,136,042 rows, kept 1,036,956/3,000,000 sampled rows
+[2026-05-26 11:17:57] train sample batch 32: read 14,871,631/66,136,042 rows, kept 1,047,320/3,000,000 sampled rows
+[2026-05-26 11:17:58] train sample batch 33: read 15,371,631/66,136,042 rows, kept 1,057,568/3,000,000 sampled rows
+[2026-05-26 11:17:58] train sample batch 34: read 15,871,631/66,136,042 rows, kept 1,067,720/3,000,000 sampled rows
+[2026-05-26 11:17:58] train sample batch 35: read 16,371,631/66,136,042 rows, kept 1,077,912/3,000,000 sampled rows
+[2026-05-26 11:17:59] train sample batch 36: read 16,513,604/66,136,042 rows, kept 1,080,944/3,000,000 sampled rows
+[2026-05-26 11:17:59] train sample batch 37: read 17,013,604/66,136,042 rows, kept 1,180,984/3,000,000 sampled rows
+[2026-05-26 11:18:00] train sample batch 38: read 17,513,604/66,136,042 rows, kept 1,282,480/3,000,000 sampled rows
+[2026-05-26 11:18:00] train sample batch 39: read 18,013,604/66,136,042 rows, kept 1,296,400/3,000,000 sampled rows
+[2026-05-26 11:18:01] train sample batch 40: read 18,513,604/66,136,042 rows, kept 1,306,756/3,000,000 sampled rows
+[2026-05-26 11:18:01] train sample batch 41: read 19,013,604/66,136,042 rows, kept 1,316,976/3,000,000 sampled rows
+[2026-05-26 11:18:02] train sample batch 42: read 19,513,604/66,136,042 rows, kept 1,326,720/3,000,000 sampled rows
+[2026-05-26 11:18:02] train sample batch 43: read 20,013,604/66,136,042 rows, kept 1,337,288/3,000,000 sampled rows
+[2026-05-26 11:18:02] train sample batch 44: read 20,513,604/66,136,042 rows, kept 1,347,336/3,000,000 sampled rows
+[2026-05-26 11:18:02] train sample batch 45: read 20,637,110/66,136,042 rows, kept 1,349,780/3,000,000 sampled rows
+[2026-05-26 11:18:03] train sample batch 46: read 21,137,110/66,136,042 rows, kept 1,450,932/3,000,000 sampled rows
+[2026-05-26 11:18:04] train sample batch 47: read 21,637,110/66,136,042 rows, kept 1,551,668/3,000,000 sampled rows
+[2026-05-26 11:18:04] train sample batch 48: read 22,137,110/66,136,042 rows, kept 1,566,876/3,000,000 sampled rows
+[2026-05-26 11:18:04] train sample batch 49: read 22,637,110/66,136,042 rows, kept 1,576,984/3,000,000 sampled rows
+[2026-05-26 11:18:05] train sample batch 50: read 23,137,110/66,136,042 rows, kept 1,587,296/3,000,000 sampled rows
+[2026-05-26 11:18:05] train sample batch 51: read 23,637,110/66,136,042 rows, kept 1,598,104/3,000,000 sampled rows
+[2026-05-26 11:18:06] train sample batch 52: read 24,137,110/66,136,042 rows, kept 1,608,576/3,000,000 sampled rows
+[2026-05-26 11:18:06] train sample batch 53: read 24,637,110/66,136,042 rows, kept 1,618,864/3,000,000 sampled rows
+[2026-05-26 11:18:06] train sample batch 54: read 24,763,845/66,136,042 rows, kept 1,621,372/3,000,000 sampled rows
+[2026-05-26 11:18:07] train sample batch 55: read 25,263,845/66,136,042 rows, kept 1,721,016/3,000,000 sampled rows
+[2026-05-26 11:18:07] train sample batch 56: read 25,763,845/66,136,042 rows, kept 1,820,588/3,000,000 sampled rows
+[2026-05-26 11:18:08] train sample batch 57: read 26,263,845/66,136,042 rows, kept 1,835,592/3,000,000 sampled rows
+[2026-05-26 11:18:08] train sample batch 58: read 26,763,845/66,136,042 rows, kept 1,845,928/3,000,000 sampled rows
+[2026-05-26 11:18:09] train sample batch 59: read 27,263,845/66,136,042 rows, kept 1,856,188/3,000,000 sampled rows
+[2026-05-26 11:18:09] train sample batch 60: read 27,763,845/66,136,042 rows, kept 1,866,452/3,000,000 sampled rows
+[2026-05-26 11:18:10] train sample batch 61: read 28,263,845/66,136,042 rows, kept 1,877,348/3,000,000 sampled rows
+[2026-05-26 11:18:10] train sample batch 62: read 28,763,845/66,136,042 rows, kept 1,887,760/3,000,000 sampled rows
+[2026-05-26 11:18:10] train sample batch 63: read 28,903,394/66,136,042 rows, kept 1,890,548/3,000,000 sampled rows
+[2026-05-26 11:18:11] train sample batch 64: read 29,403,394/66,136,042 rows, kept 1,992,036/3,000,000 sampled rows
+[2026-05-26 11:18:11] train sample batch 65: read 29,903,394/66,136,042 rows, kept 2,093,028/3,000,000 sampled rows
+[2026-05-26 11:18:12] train sample batch 66: read 30,403,394/66,136,042 rows, kept 2,109,488/3,000,000 sampled rows
+[2026-05-26 11:18:12] train sample batch 67: read 30,903,394/66,136,042 rows, kept 2,119,940/3,000,000 sampled rows
+[2026-05-26 11:18:13] train sample batch 68: read 31,403,394/66,136,042 rows, kept 2,130,396/3,000,000 sampled rows
+[2026-05-26 11:18:13] train sample batch 69: read 31,903,394/66,136,042 rows, kept 2,140,612/3,000,000 sampled rows
+[2026-05-26 11:18:13] train sample batch 70: read 32,403,394/66,136,042 rows, kept 2,151,040/3,000,000 sampled rows
+[2026-05-26 11:18:14] train sample batch 71: read 32,903,394/66,136,042 rows, kept 2,160,936/3,000,000 sampled rows
+[2026-05-26 11:18:14] train sample batch 72: read 33,046,267/66,136,042 rows, kept 2,163,644/3,000,000 sampled rows
+[2026-05-26 11:18:14] train sample batch 73: read 33,546,267/66,136,042 rows, kept 2,266,148/3,000,000 sampled rows
+[2026-05-26 11:18:15] train sample batch 74: read 34,046,267/66,136,042 rows, kept 2,367,152/3,000,000 sampled rows
+[2026-05-26 11:18:16] train sample batch 75: read 34,546,267/66,136,042 rows, kept 2,382,220/3,000,000 sampled rows
+[2026-05-26 11:18:16] train sample batch 76: read 35,046,267/66,136,042 rows, kept 2,392,384/3,000,000 sampled rows
+[2026-05-26 11:18:16] train sample batch 77: read 35,546,267/66,136,042 rows, kept 2,402,564/3,000,000 sampled rows
+[2026-05-26 11:18:17] train sample batch 78: read 36,046,267/66,136,042 rows, kept 2,412,464/3,000,000 sampled rows
+[2026-05-26 11:18:17] train sample batch 79: read 36,546,267/66,136,042 rows, kept 2,423,128/3,000,000 sampled rows
+[2026-05-26 11:18:18] train sample batch 80: read 37,046,267/66,136,042 rows, kept 2,433,240/3,000,000 sampled rows
+[2026-05-26 11:18:18] train sample batch 81: read 37,193,539/66,136,042 rows, kept 2,436,056/3,000,000 sampled rows
+[2026-05-26 11:18:18] train sample batch 82: read 37,693,539/66,136,042 rows, kept 2,537,164/3,000,000 sampled rows
+[2026-05-26 11:18:19] train sample batch 83: read 38,193,539/66,136,042 rows, kept 2,638,444/3,000,000 sampled rows
+[2026-05-26 11:18:19] train sample batch 84: read 38,693,539/66,136,042 rows, kept 2,654,956/3,000,000 sampled rows
+[2026-05-26 11:18:20] train sample batch 85: read 39,193,539/66,136,042 rows, kept 2,665,012/3,000,000 sampled rows
+[2026-05-26 11:18:20] train sample batch 86: read 39,693,539/66,136,042 rows, kept 2,675,760/3,000,000 sampled rows
+[2026-05-26 11:18:21] train sample batch 87: read 40,193,539/66,136,042 rows, kept 2,686,420/3,000,000 sampled rows
+[2026-05-26 11:18:21] train sample batch 88: read 40,693,539/66,136,042 rows, kept 2,697,048/3,000,000 sampled rows
+[2026-05-26 11:18:22] train sample batch 89: read 41,193,539/66,136,042 rows, kept 2,707,632/3,000,000 sampled rows
+[2026-05-26 11:18:22] train sample batch 90: read 41,339,198/66,136,042 rows, kept 2,710,512/3,000,000 sampled rows
+[2026-05-26 11:18:22] train sample batch 91: read 41,839,198/66,136,042 rows, kept 2,811,624/3,000,000 sampled rows
+[2026-05-26 11:18:23] train sample batch 92: read 42,339,198/66,136,042 rows, kept 2,912,560/3,000,000 sampled rows
+[2026-05-26 11:18:23] train sample batch 93: read 42,839,198/66,136,042 rows, kept 2,928,388/3,000,000 sampled rows
+[2026-05-26 11:18:24] train sample batch 94: read 43,339,198/66,136,042 rows, kept 2,938,508/3,000,000 sampled rows
+[2026-05-26 11:18:24] train sample batch 95: read 43,839,198/66,136,042 rows, kept 2,948,740/3,000,000 sampled rows
+[2026-05-26 11:18:24] train sample batch 96: read 44,339,198/66,136,042 rows, kept 2,959,120/3,000,000 sampled rows
+[2026-05-26 11:18:25] train sample batch 97: read 44,839,198/66,136,042 rows, kept 2,969,384/3,000,000 sampled rows
+[2026-05-26 11:18:25] train sample batch 98: read 45,339,198/66,136,042 rows, kept 2,979,776/3,000,000 sampled rows
+[2026-05-26 11:18:25] train sample batch 99: read 45,485,612/66,136,042 rows, kept 2,982,692/3,000,000 sampled rows
+[2026-05-26 11:18:26] train sample batch 100: read 45,985,612/66,136,042 rows, kept 3,000,000/3,000,000 sampled rows
+[2026-05-26 11:18:38] training sample ready: rows=3,000,000, positives=750,060, negatives=2,249,940
+Training until validation scores don't improve for 100 rounds
+[50]	valid_0's auc: 0.869495	valid_0's binary_logloss: 0.396415
+[100]	valid_0's auc: 0.876411	valid_0's binary_logloss: 0.370171
+[150]	valid_0's auc: 0.879957	valid_0's binary_logloss: 0.362498
+[200]	valid_0's auc: 0.882102	valid_0's binary_logloss: 0.358984
+[250]	valid_0's auc: 0.883742	valid_0's binary_logloss: 0.356591
+[300]	valid_0's auc: 0.884979	valid_0's binary_logloss: 0.354851
+[350]	valid_0's auc: 0.885889	valid_0's binary_logloss: 0.35356
+[400]	valid_0's auc: 0.88663	valid_0's binary_logloss: 0.352516
+[450]	valid_0's auc: 0.887251	valid_0's binary_logloss: 0.351639
+[500]	valid_0's auc: 0.887739	valid_0's binary_logloss: 0.350963
+[550]	valid_0's auc: 0.888149	valid_0's binary_logloss: 0.350396
+[600]	valid_0's auc: 0.888483	valid_0's binary_logloss: 0.349935
+[650]	valid_0's auc: 0.888776	valid_0's binary_logloss: 0.349523
+[700]	valid_0's auc: 0.889035	valid_0's binary_logloss: 0.349159
+[750]	valid_0's auc: 0.889255	valid_0's binary_logloss: 0.34885
+[800]	valid_0's auc: 0.889462	valid_0's binary_logloss: 0.348556
+[850]	valid_0's auc: 0.889662	valid_0's binary_logloss: 0.348275
+[950]	valid_0's auc: 0.890023	valid_0's binary_logloss: 0.347759
+[1000]	valid_0's auc: 0.890185	valid_0's binary_logloss: 0.347526
+Did not meet early stopping. Best iteration is:
+[1000]	valid_0's auc: 0.890185	valid_0's binary_logloss: 0.347526
+Holdout AUC: 0.8901845762327725
+[2026-05-26 11:25:57] DONE  train LightGBM (495.8s)
+[2026-05-26 11:25:57] START clean train intermediates
+[2026-05-26 11:25:58] removed intermediate: /kaggle/working/CS116_Project/data/processed/train_features_chunks
+[2026-05-26 11:25:59] removed intermediate: /kaggle/working/CS116_Project/data/processed/train_model_ready_chunks
+[2026-05-26 11:25:59] removed intermediate: /kaggle/working/CS116_Project/data/processed/train_candidates.parquet
+[2026-05-26 11:25:59] removed intermediate: /kaggle/working/CS116_Project/data/processed/train_dataset_labels.parquet
+[2026-05-26 11:25:59] DONE  clean train intermediates (1.5s)
+[2026-05-26 11:25:59] train pipeline finished
+
+2026-05-26 11:26:06] validation pipeline started
+[2026-05-26 11:26:06] START clean stale validation intermediates
+[2026-05-26 11:26:06] DONE  clean stale validation intermediates (0.0s)
+[2026-05-26 11:26:06] START load data and make time splits
+[2026-05-26 11:26:06] DONE  load data and make time splits (0.0s)
+[2026-05-26 11:26:06] START build validation candidates
+[2026-05-26 11:32:40] DONE  build validation candidates (394.5s)
+[2026-05-26 11:32:40] START create validation labels
+[2026-05-26 11:32:44] DONE  create validation labels (3.9s)
+[2026-05-26 11:32:44] START label validation candidates
+[2026-05-26 11:32:57] DONE  label validation candidates (13.2s)
+[2026-05-26 11:32:57] START estimate validation candidate recall
+
+Candidate recall report
+  Ground truth: users=862,958, pairs=3,432,162, items=13,615
+  Candidates: users=1,648,890, pairs=68,460,880, items=17,887
+  Recall: pair=29.26%, user_hit=50.94%, avg_user=30.26%, median_user=11.11%, oracle_P@10=11.5883
+  Hits: hit_pairs=1,004,183, users_with_hit=439,605
+  Candidate items per candidate user: min=3, mean=41.52, median=42.00, p75=53.00, p90=60.00, p95=63.00, max=84
+  Candidate items per label user: min=0, mean=32.60, median=41.00, p75=54.00, p90=60.00, p95=63.00, max=83, zero_users=274,364
+[2026-05-26 11:33:32] removed intermediate: /kaggle/working/CS116_Project/data/processed/valid_candidates.parquet
+[2026-05-26 11:33:32] removed intermediate: /kaggle/working/CS116_Project/data/processed/valid_gt.parquet
+[2026-05-26 11:33:32] DONE  estimate validation candidate recall (34.5s)
+[2026-05-26 11:33:32] START prepare validation preprocess spec
+[2026-05-26 11:33:32] DONE  prepare validation preprocess spec (0.0s)
+[2026-05-26 11:33:32] START build validation features and prepare matrix
+[2026-05-26 11:33:33] build+prepare validation chunk 1/16: part_000.parquet
+[2026-05-26 11:37:46] build+prepare validation chunk 2/16: part_001.parquet
+[2026-05-26 11:42:23] build+prepare validation chunk 3/16: part_002.parquet
+[2026-05-26 11:46:27] build+prepare validation chunk 4/16: part_003.parquet
+[2026-05-26 11:50:18] build+prepare validation chunk 5/16: part_004.parquet
+[2026-05-26 11:54:42] build+prepare validation chunk 6/16: part_005.parquet
+[2026-05-26 11:58:57] build+prepare validation chunk 7/16: part_006.parquet
+[2026-05-26 12:03:43] build+prepare validation chunk 8/16: part_007.parquet
+[2026-05-26 12:07:57] build+prepare validation chunk 9/16: part_008.parquet
+[2026-05-26 12:12:17] build+prepare validation chunk 10/16: part_009.parquet
+[2026-05-26 12:16:43] build+prepare validation chunk 11/16: part_010.parquet
+[2026-05-26 12:20:49] build+prepare validation chunk 12/16: part_011.parquet
+[2026-05-26 12:25:05] build+prepare validation chunk 13/16: part_012.parquet
+[2026-05-26 12:28:42] build+prepare validation chunk 14/16: part_013.parquet
+[2026-05-26 12:31:45] build+prepare validation chunk 15/16: part_014.parquet
+[2026-05-26 12:35:17] build+prepare validation chunk 16/16: part_015.parquet
+[2026-05-26 12:38:28] removed intermediate: /kaggle/working/CS116_Project/data/processed/valid_dataset_labels.parquet
+[2026-05-26 12:38:28] DONE  build validation features and prepare matrix (3896.3s)
+[2026-05-26 12:38:28] START predict validation top-k
+[2026-05-26 12:39:35] predict batch 1: 2,000,000/68,460,880 rows, kept 970,124 top-k rows for 102,905 users
+[2026-05-26 12:40:30] predict batch 2: 4,000,000/68,460,880 rows, kept 1,027,895 top-k rows for 102,905 users
+[2026-05-26 12:40:37] predict batch 3: 4,268,364/68,460,880 rows, kept 1,028,479 top-k rows for 102,905 users
+[2026-05-26 12:41:33] predict batch 4: 6,268,364/68,460,880 rows, kept 1,998,128 top-k rows for 205,934 users
+[2026-05-26 12:42:28] predict batch 5: 8,268,364/68,460,880 rows, kept 2,057,461 top-k rows for 205,934 users
+[2026-05-26 12:42:35] predict batch 6: 8,550,172/68,460,880 rows, kept 2,058,221 top-k rows for 205,934 users
+[2026-05-26 12:43:32] predict batch 7: 10,550,172/68,460,880 rows, kept 3,026,033 top-k rows for 308,967 users
+[2026-05-26 12:44:39] predict batch 8: 12,550,172/68,460,880 rows, kept 3,087,512 top-k rows for 308,967 users
+[2026-05-26 12:44:46] predict batch 9: 12,823,811/68,460,880 rows, kept 3,088,019 top-k rows for 308,967 users
+[2026-05-26 12:45:47] predict batch 10: 14,823,811/68,460,880 rows, kept 4,061,722 top-k rows for 412,477 users
+[2026-05-26 12:46:43] predict batch 11: 16,823,811/68,460,880 rows, kept 4,121,932 top-k rows for 412,477 users
+[2026-05-26 12:46:51] predict batch 12: 17,111,050/68,460,880 rows, kept 4,122,545 top-k rows for 412,477 users
+[2026-05-26 12:47:48] predict batch 13: 19,111,050/68,460,880 rows, kept 5,092,260 top-k rows for 515,458 users
+[2026-05-26 12:48:42] predict batch 14: 21,111,050/68,460,880 rows, kept 5,151,294 top-k rows for 515,458 users
+[2026-05-26 12:48:50] predict batch 15: 21,379,841/68,460,880 rows, kept 5,151,804 top-k rows for 515,458 users
+[2026-05-26 12:49:47] predict batch 16: 23,379,841/68,460,880 rows, kept 6,117,643 top-k rows for 618,284 users
+[2026-05-26 12:50:44] predict batch 17: 25,379,841/68,460,880 rows, kept 6,178,844 top-k rows for 618,284 users
+[2026-05-26 12:50:52] predict batch 18: 25,652,644/68,460,880 rows, kept 6,179,557 top-k rows for 618,284 users
+[2026-05-26 12:51:51] predict batch 19: 27,652,644/68,460,880 rows, kept 7,148,114 top-k rows for 721,394 users
+[2026-05-26 12:52:47] predict batch 20: 29,652,644/68,460,880 rows, kept 7,209,268 top-k rows for 721,394 users
+[2026-05-26 12:52:55] predict batch 21: 29,936,490/68,460,880 rows, kept 7,210,030 top-k rows for 721,394 users
+[2026-05-26 12:53:54] predict batch 22: 31,936,490/68,460,880 rows, kept 8,180,958 top-k rows for 824,524 users
+[2026-05-26 12:55:02] predict batch 23: 33,936,490/68,460,880 rows, kept 8,240,200 top-k rows for 824,524 users
+[2026-05-26 12:55:10] predict batch 24: 34,219,100/68,460,880 rows, kept 8,240,796 top-k rows for 824,524 users
+[2026-05-26 12:56:13] predict batch 25: 36,219,100/68,460,880 rows, kept 9,215,094 top-k rows for 928,044 users
+[2026-05-26 12:57:10] predict batch 26: 38,219,100/68,460,880 rows, kept 9,274,804 top-k rows for 928,044 users
+[2026-05-26 12:57:18] predict batch 27: 38,514,007/68,460,880 rows, kept 9,275,416 top-k rows for 928,044 users
+[2026-05-26 12:58:18] predict batch 28: 40,514,007/68,460,880 rows, kept 10,246,834 top-k rows for 1,031,128 users
+[2026-05-26 12:59:17] predict batch 29: 42,514,007/68,460,880 rows, kept 10,305,214 top-k rows for 1,031,128 users
+[2026-05-26 12:59:25] predict batch 30: 42,799,319/68,460,880 rows, kept 10,305,772 top-k rows for 1,031,128 users
+[2026-05-26 13:00:30] predict batch 31: 44,799,319/68,460,880 rows, kept 11,278,103 top-k rows for 1,134,261 users
+[2026-05-26 13:01:29] predict batch 32: 46,799,319/68,460,880 rows, kept 11,336,129 top-k rows for 1,134,261 users
+[2026-05-26 13:01:37] predict batch 33: 47,085,979/68,460,880 rows, kept 11,336,608 top-k rows for 1,134,261 users
+[2026-05-26 13:02:38] predict batch 34: 49,085,979/68,460,880 rows, kept 12,304,523 top-k rows for 1,236,877 users
+[2026-05-26 13:03:36] predict batch 35: 51,085,979/68,460,880 rows, kept 12,361,730 top-k rows for 1,236,877 users
+[2026-05-26 13:03:44] predict batch 36: 51,350,125/68,460,880 rows, kept 12,362,263 top-k rows for 1,236,877 users
+[2026-05-26 13:04:53] predict batch 37: 53,350,125/68,460,880 rows, kept 13,329,665 top-k rows for 1,339,378 users
+[2026-05-26 13:05:53] predict batch 38: 55,350,125/68,460,880 rows, kept 13,386,158 top-k rows for 1,339,378 users
+[2026-05-26 13:06:00] predict batch 39: 55,600,791/68,460,880 rows, kept 13,386,732 top-k rows for 1,339,378 users
+[2026-05-26 13:07:01] predict batch 40: 57,600,791/68,460,880 rows, kept 14,358,052 top-k rows for 1,442,264 users
+[2026-05-26 13:07:58] predict batch 41: 59,600,791/68,460,880 rows, kept 14,414,569 top-k rows for 1,442,264 users
+[2026-05-26 13:08:06] predict batch 42: 59,879,488/68,460,880 rows, kept 14,415,046 top-k rows for 1,442,264 users
+[2026-05-26 13:09:04] predict batch 43: 61,879,488/68,460,880 rows, kept 15,388,183 top-k rows for 1,545,642 users
+[2026-05-26 13:10:03] predict batch 44: 63,879,488/68,460,880 rows, kept 15,447,761 top-k rows for 1,545,642 users
+[2026-05-26 13:10:11] predict batch 45: 64,175,411/68,460,880 rows, kept 15,448,343 top-k rows for 1,545,642 users
+[2026-05-26 13:11:10] predict batch 46: 66,175,411/68,460,880 rows, kept 16,420,572 top-k rows for 1,648,890 users
+[2026-05-26 13:12:06] predict batch 47: 68,175,411/68,460,880 rows, kept 16,479,679 top-k rows for 1,648,890 users
+[2026-05-26 13:12:15] predict batch 48: 68,460,880/68,460,880 rows, kept 16,480,255 top-k rows for 1,648,890 users
+[2026-05-26 13:13:05] DONE  predict validation top-k (2077.3s)
+[2026-05-26 13:13:05] START prepare validation fallback items
+[2026-05-26 13:13:26] DONE  prepare validation fallback items (21.0s)
+[2026-05-26 13:13:26] START evaluate validation predictions
+Server Precision@10: 7.145005898317184
+[2026-05-26 13:14:02] DONE  evaluate validation predictions (35.3s)
+[2026-05-26 13:14:02] START save validation submission pickle
+Saved submission to: submission_valid.pkl
+[2026-05-26 13:14:05] DONE  save validation submission pickle (3.5s)
+[2026-05-26 13:14:05] validation pipeline finished
+
+
+[2026-05-26 13:44:33] submission pipeline started
+[2026-05-26 13:44:33] START clean stale submission intermediates
+[2026-05-26 13:44:33] DONE  clean stale submission intermediates (0.0s)
+[2026-05-26 13:44:33] START load data and make time splits
+[2026-05-26 13:44:33] DONE  load data and make time splits (0.0s)
+[2026-05-26 13:44:33] START build final candidates
+[2026-05-26 13:48:05] DONE  build final candidates (211.9s)
+[2026-05-26 13:48:05] START prepare final preprocess spec
+[2026-05-26 13:48:05] DONE  prepare final preprocess spec (0.0s)
+[2026-05-26 13:48:05] START build final features and prepare matrix
+[2026-05-26 13:48:06] build+prepare final chunk 1/16: part_000.parquet
+[2026-05-26 13:52:21] build+prepare final chunk 2/16: part_001.parquet
+[2026-05-26 13:56:31] build+prepare final chunk 3/16: part_002.parquet
+[2026-05-26 14:00:42] build+prepare final chunk 4/16: part_003.parquet
+[2026-05-26 14:05:26] build+prepare final chunk 5/16: part_004.parquet
+[2026-05-26 14:10:14] build+prepare final chunk 6/16: part_005.parquet
+[2026-05-26 14:14:33] build+prepare final chunk 7/16: part_006.parquet
+[2026-05-26 14:18:23] build+prepare final chunk 8/16: part_007.parquet
+[2026-05-26 14:22:37] build+prepare final chunk 9/16: part_008.parquet
+[2026-05-26 14:26:25] build+prepare final chunk 10/16: part_009.parquet
+[2026-05-26 14:30:10] build+prepare final chunk 11/16: part_010.parquet
+[2026-05-26 14:34:21] build+prepare final chunk 12/16: part_011.parquet
+[2026-05-26 14:38:15] build+prepare final chunk 13/16: part_012.parquet
+[2026-05-26 14:42:02] build+prepare final chunk 14/16: part_013.parquet
+[2026-05-26 14:46:06] build+prepare final chunk 15/16: part_014.parquet
+[2026-05-26 14:50:09] build+prepare final chunk 16/16: part_015.parquet
+[2026-05-26 14:54:22] DONE  build final features and prepare matrix (3976.9s)
+[2026-05-26 14:54:22] START predict final top-k
+[2026-05-26 14:55:32] predict batch 1: 2,000,000/44,434,473 rows, kept 1,068,509 top-k rows for 110,512 users
+[2026-05-26 14:55:54] predict batch 2: 2,771,357/44,434,473 rows, kept 1,102,085 top-k rows for 110,512 users
+[2026-05-26 14:56:51] predict batch 3: 4,771,357/44,434,473 rows, kept 2,170,303 top-k rows for 221,041 users
+[2026-05-26 14:57:11] predict batch 4: 5,547,713/44,434,473 rows, kept 2,204,276 top-k rows for 221,041 users
+[2026-05-26 14:58:08] predict batch 5: 7,547,713/44,434,473 rows, kept 3,273,460 top-k rows for 331,660 users
+[2026-05-26 14:58:29] predict batch 6: 8,323,258/44,434,473 rows, kept 3,307,487 top-k rows for 331,660 users
+[2026-05-26 14:59:28] predict batch 7: 10,323,258/44,434,473 rows, kept 4,379,788 top-k rows for 442,655 users
+[2026-05-26 14:59:50] predict batch 8: 11,106,712/44,434,473 rows, kept 4,414,320 top-k rows for 442,655 users
+[2026-05-26 15:00:48] predict batch 9: 13,106,712/44,434,473 rows, kept 5,481,441 top-k rows for 553,097 users
+[2026-05-26 15:01:09] predict batch 10: 13,875,836/44,434,473 rows, kept 5,515,677 top-k rows for 553,097 users
+[2026-05-26 15:02:06] predict batch 11: 15,875,836/44,434,473 rows, kept 6,583,124 top-k rows for 663,540 users
+[2026-05-26 15:02:28] predict batch 12: 16,648,213/44,434,473 rows, kept 6,617,336 top-k rows for 663,540 users
+[2026-05-26 15:03:27] predict batch 13: 18,648,213/44,434,473 rows, kept 7,686,898 top-k rows for 774,222 users
+[2026-05-26 15:03:52] predict batch 14: 19,425,904/44,434,473 rows, kept 7,720,894 top-k rows for 774,222 users
+[2026-05-26 15:05:15] predict batch 15: 21,425,904/44,434,473 rows, kept 8,790,531 top-k rows for 884,855 users
+[2026-05-26 15:05:39] predict batch 16: 22,204,358/44,434,473 rows, kept 8,824,245 top-k rows for 884,855 users
+[2026-05-26 15:06:43] predict batch 17: 24,204,358/44,434,473 rows, kept 9,898,363 top-k rows for 996,001 users
+[2026-05-26 15:07:07] predict batch 18: 24,993,245/44,434,473 rows, kept 9,932,667 top-k rows for 996,001 users
+[2026-05-26 15:08:11] predict batch 19: 26,993,245/44,434,473 rows, kept 11,002,878 top-k rows for 1,106,734 users
+[2026-05-26 15:08:35] predict batch 20: 27,774,978/44,434,473 rows, kept 11,037,201 top-k rows for 1,106,734 users
+[2026-05-26 15:09:39] predict batch 21: 29,774,978/44,434,473 rows, kept 12,107,752 top-k rows for 1,217,454 users
+[2026-05-26 15:10:04] predict batch 22: 30,556,265/44,434,473 rows, kept 12,141,554 top-k rows for 1,217,454 users
+[2026-05-26 15:11:09] predict batch 23: 32,556,265/44,434,473 rows, kept 13,207,457 top-k rows for 1,327,613 users
+[2026-05-26 15:11:32] predict batch 24: 33,324,035/44,434,473 rows, kept 13,240,395 top-k rows for 1,327,613 users
+[2026-05-26 15:12:37] predict batch 25: 35,324,035/44,434,473 rows, kept 14,306,468 top-k rows for 1,437,841 users
+[2026-05-26 15:13:00] predict batch 26: 36,088,438/44,434,473 rows, kept 14,339,715 top-k rows for 1,437,841 users
+[2026-05-26 15:14:00] predict batch 27: 38,088,438/44,434,473 rows, kept 15,407,759 top-k rows for 1,548,278 users
+[2026-05-26 15:14:29] predict batch 28: 38,864,923/44,434,473 rows, kept 15,441,172 top-k rows for 1,548,278 users
+[2026-05-26 15:15:39] predict batch 29: 40,864,923/44,434,473 rows, kept 16,513,529 top-k rows for 1,659,228 users
+[2026-05-26 15:16:02] predict batch 30: 41,651,509/44,434,473 rows, kept 16,547,769 top-k rows for 1,659,228 users
+[2026-05-26 15:17:02] predict batch 31: 43,651,509/44,434,473 rows, kept 17,619,365 top-k rows for 1,770,107 users
+[2026-05-26 15:17:24] predict batch 32: 44,434,473/44,434,473 rows, kept 17,653,546 top-k rows for 1,770,107 users
+[2026-05-26 15:18:18] DONE  predict final top-k (1436.0s)
+[2026-05-26 15:18:18] START prepare fallback items
+[2026-05-26 15:18:42] DONE  prepare fallback items (24.3s)
+[2026-05-26 15:18:42] START save final submission pickle
+Saved submission to: /kaggle/working/CS116_Project/outputs/submission.pkl
+[2026-05-26 15:19:16] DONE  save final submission pickle (34.2s)
+[2026-05-26 15:19:16] submission pipeline finished

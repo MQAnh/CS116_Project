@@ -234,6 +234,7 @@ def merge_candidates(candidate_lfs):
         .with_columns([
             (pl.col("candidate_source") == "recent").cast(pl.Int8).alias("is_recent_candidate"),
             (pl.col("candidate_source") == "frequent").cast(pl.Int8).alias("is_frequent_candidate"),
+            (pl.col("candidate_source") == "popular").cast(pl.Int8).alias("is_popular_candidate"),
             (pl.col("candidate_source") == "category_popular").cast(pl.Int8).alias("is_category_candidate"),
             (pl.col("candidate_source") == "cooccurrence").cast(pl.Int8).alias("is_cooccurrence_candidate"),
         ])
@@ -241,6 +242,7 @@ def merge_candidates(candidate_lfs):
         .agg([
             pl.col("is_recent_candidate").max(),
             pl.col("is_frequent_candidate").max(),
+            pl.col("is_popular_candidate").max(),
             pl.col("is_category_candidate").max(),
             pl.col("is_cooccurrence_candidate").max(),
             pl.col("candidate_source").n_unique().alias("n_candidate_sources"),
@@ -255,6 +257,7 @@ def build_train_candidates(
     min_bills=2,
     recent_top_k=20,
     frequent_top_k=20,
+    popular_top_k=0,
     category_col="category_l2",
     user_top_categories=3,
     category_items_per_category=20,
@@ -267,6 +270,12 @@ def build_train_candidates(
     recent_lf = recent_candidates(train_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=True)
     freq_lf = frequent_candidates(train_hist_lf, active_users_lf, top_k=frequent_top_k)
     candidate_lfs = [recent_lf, freq_lf]
+    if popular_top_k > 0:
+        candidate_lfs.append(popular_candidates(
+            train_hist_lf,
+            active_users_lf,
+            top_k=popular_top_k,
+        ))
     if items_lf is not None:
         candidate_lfs.append(category_popular_candidates(
             train_hist_lf,
@@ -293,6 +302,7 @@ def build_valid_candidates(
     min_bills=2,
     recent_top_k=30,
     frequent_top_k=20,
+    popular_top_k=0,
     category_col="category_l2",
     user_top_categories=3,
     category_items_per_category=20,
@@ -305,6 +315,12 @@ def build_valid_candidates(
     recent_lf = recent_candidates(valid_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=False).unique(["customer_id", "item_id"])
     freq_lf = frequent_candidates(valid_hist_lf, active_users_lf, top_k=frequent_top_k).unique(["customer_id", "item_id"])
     candidate_lfs = [recent_lf, freq_lf]
+    if popular_top_k > 0:
+        candidate_lfs.append(popular_candidates(
+            valid_hist_lf,
+            active_users_lf,
+            top_k=popular_top_k,
+        ))
     if items_lf is not None:
         candidate_lfs.append(category_popular_candidates(
             valid_hist_lf,

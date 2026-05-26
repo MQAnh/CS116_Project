@@ -62,6 +62,7 @@ def main():
             min_bills=cfg.MIN_BILLS_ACTIVE_USER,
             recent_top_k=cfg.RECENT_TOP_K_VALID,
             frequent_top_k=cfg.FREQUENT_TOP_K_VALID,
+            popular_top_k=cfg.POPULAR_CANDIDATE_TOP_K,
             category_col=cfg.CATEGORY_CANDIDATE_COL,
             user_top_categories=cfg.USER_TOP_CATEGORIES,
             category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,

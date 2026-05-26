@@ -97,6 +97,7 @@ def train_lgbm(
     negative_ratio=3.0,
     positive_fraction=1.0,
     max_train_rows=3_000_000,
+    categorical_features=None,
 ):
     """Step 8 từ notebook: train LightGBM binary baseline."""
     train_df = load_training_sample(
@@ -109,6 +110,10 @@ def train_lgbm(
     y = train_df["target"]
     X = train_df.drop(columns=["target"])
     feature_cols = list(X.columns)
+    categorical_features = [] if categorical_features is None else [
+        c for c in categorical_features
+        if c in feature_cols
+    ]
 
     X_train, X_holdout, y_train, y_holdout = train_test_split(
         X,
@@ -139,6 +144,7 @@ def train_lgbm(
         y_train,
         eval_set=[(X_holdout, y_holdout)],
         eval_metric="auc",
+        categorical_feature=categorical_features,
         callbacks=[
             lgb.early_stopping(stopping_rounds=100),
             lgb.log_evaluation(period=50),

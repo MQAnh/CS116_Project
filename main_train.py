@@ -43,6 +43,7 @@ def main():
             min_bills=cfg.MIN_BILLS_ACTIVE_USER,
             recent_top_k=cfg.RECENT_TOP_K_TRAIN,
             frequent_top_k=cfg.FREQUENT_TOP_K_TRAIN,
+            popular_top_k=cfg.POPULAR_CANDIDATE_TOP_K,
             category_col=cfg.CATEGORY_CANDIDATE_COL,
             user_top_categories=cfg.USER_TOP_CATEGORIES,
             category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
@@ -88,6 +89,7 @@ def main():
             negative_ratio=cfg.TRAIN_NEGATIVE_RATIO,
             positive_fraction=cfg.TRAIN_POSITIVE_FRACTION,
             max_train_rows=cfg.TRAIN_MAX_ROWS,
+            categorical_features=cfg.CAT_COLS,
         )
     if cfg.CLEAN_INTERMEDIATE_AFTER_TRAIN:
         with log_time("clean train intermediates"):
