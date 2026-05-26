@@ -1,3 +1,5 @@
+import polars as pl
+
 from src import config as cfg
 from src.cleanup import cleanup_paths
 from src.candidates import build_valid_candidates
