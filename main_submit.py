@@ -56,6 +56,9 @@ def main():
         )
 
     with log_time("build final candidates"):
+        final_co_hist_lf = splits["final_hist_lf"].filter(
+            pl.col("month").is_between(*cfg.FINAL_COOCCURRENCE_HISTORY_MONTHS)
+        )
         final_candidates_lf = build_valid_candidates(
             splits["final_hist_lf"],
             items_lf=items_lf,
@@ -66,10 +69,11 @@ def main():
             category_col=cfg.CATEGORY_CANDIDATE_COL,
             user_top_categories=cfg.USER_TOP_CATEGORIES,
             category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
-            co_anchor_top_k=cfg.COOCCURRENCE_ANCHOR_TOP_K,
-            co_top_k=cfg.COOCCURRENCE_TOP_K,
-            co_max_bill_items=cfg.COOCCURRENCE_MAX_BILL_ITEMS,
+            co_anchor_top_k=cfg.FINAL_COOCCURRENCE_ANCHOR_TOP_K,
+            co_top_k=cfg.FINAL_COOCCURRENCE_TOP_K,
+            co_max_bill_items=cfg.FINAL_COOCCURRENCE_MAX_BILL_ITEMS,
             include_cooccurrence=cfg.FINAL_COOCCURRENCE_ENABLED,
+            co_hist_lf=final_co_hist_lf,
         )
         final_candidates_lf.sink_parquet(cfg.FINAL_CANDIDATES_PATH)
         final_candidates_lf = pl.scan_parquet(cfg.FINAL_CANDIDATES_PATH)

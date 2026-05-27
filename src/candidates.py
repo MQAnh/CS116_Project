@@ -310,6 +310,7 @@ def build_valid_candidates(
     co_top_k=10,
     co_max_bill_items=30,
     include_cooccurrence=True,
+    co_hist_lf=None,
 ):
     active_users_lf = get_active_users(valid_hist_lf, min_bills=min_bills)
     recent_lf = recent_candidates(valid_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=False).unique(["customer_id", "item_id"])
@@ -331,8 +332,9 @@ def build_valid_candidates(
             items_per_category=category_items_per_category,
         ))
     if include_cooccurrence:
+        co_source_lf = valid_hist_lf if co_hist_lf is None else co_hist_lf
         candidate_lfs.append(cooccurrence_candidates(
-            valid_hist_lf,
+            co_source_lf,
             active_users_lf,
             anchor_top_k=co_anchor_top_k,
             co_top_k=co_top_k,
