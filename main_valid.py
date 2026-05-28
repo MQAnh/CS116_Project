@@ -162,6 +162,12 @@ def main():
         fallback_items = popular_items(splits["valid_hist_lf"], top_k=cfg.POPULAR_TOP_K)
 
     with log_time("evaluate validation predictions"):
+        raw_submission_dict = topk_to_submission_dict(top10, k=10)
+        answer_dict = ground_truth_to_dict(splits["valid_label_lf"])
+        print(
+            "Server Precision@10 (model only):",
+            server_precision_at_k(raw_submission_dict, answer_dict, k=10),
+        )
         submission_dict = topk_to_submission_dict(
             top10,
             k=10,
@@ -169,8 +175,10 @@ def main():
             fallback_items=fallback_items,
             fallback_by_user=fallback_by_user,
         )
-        answer_dict = ground_truth_to_dict(splits["valid_label_lf"])
-        print("Server Precision@10:", server_precision_at_k(submission_dict, answer_dict, k=10))
+        print(
+            "Server Precision@10 (with fallback):",
+            server_precision_at_k(submission_dict, answer_dict, k=10),
+        )
 
     with log_time("save validation submission pickle"):
         save_submission_pickle(
