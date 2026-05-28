@@ -401,6 +401,7 @@ def topk_to_submission_dict(
     user_ids=None,
     fallback_items=None,
     fallback_by_user=None,
+    rotate_fallback_items=False,
 ):
     """
     Convert dataframe top-k prediction thành:
@@ -441,13 +442,30 @@ def topk_to_submission_dict(
                     break
                 if item_id not in items:
                     items.append(item_id)
-            for item_id in fallback_items:
+            for item_id in iter_fallback_items(
+                fallback_items,
+                customer_id,
+                rotate=rotate_fallback_items,
+            ):
                 if len(items) >= k:
                     break
                 if item_id not in items:
                     items.append(item_id)
 
     return submission
+
+
+def iter_fallback_items(fallback_items, customer_id, rotate=False):
+    if not fallback_items:
+        return
+
+    if not rotate or len(fallback_items) == 1:
+        yield from fallback_items
+        return
+
+    start_idx = int(customer_id) % len(fallback_items)
+    for offset in range(len(fallback_items)):
+        yield fallback_items[(start_idx + offset) % len(fallback_items)]
 
 
 def print_submission_item_concentration(submission, k=10, label="submission"):

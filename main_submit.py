@@ -144,13 +144,22 @@ def main():
             on="customer_id",
             how="anti",
         )
+        fallback_user_ids_lf = (
+            history_user_ids_lf
+            if cfg.RECENT_FALLBACK_FOR_ALL_USERS
+            else missing_candidate_user_ids_lf
+        )
         user_ids = collect_user_ids(history_user_ids_lf)
         fallback_by_user = recent_history_fallback_by_user(
             splits["final_hist_lf"],
-            user_ids_lf=missing_candidate_user_ids_lf,
+            user_ids_lf=fallback_user_ids_lf,
             k=10,
         )
-        fallback_items = popular_items(splits["final_hist_lf"], top_k=cfg.POPULAR_TOP_K)
+        fallback_items = popular_items(
+            splits["final_hist_lf"],
+            top_k=cfg.FALLBACK_ITEM_TOP_K,
+            skip_top_k=cfg.FALLBACK_ITEM_SKIP_TOP_K,
+        )
 
     with log_time("save final submission pickle"):
         submission_dict = topk_to_submission_dict(
@@ -159,6 +168,7 @@ def main():
             user_ids=user_ids,
             fallback_items=fallback_items,
             fallback_by_user=fallback_by_user,
+            rotate_fallback_items=cfg.ROTATE_FALLBACK_ITEMS,
         )
         print_submission_item_concentration(
             submission_dict,

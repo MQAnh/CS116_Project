@@ -12,7 +12,7 @@ def collect_user_ids(user_ids_lf):
     )
 
 
-def popular_items(hist_lf, top_k=50):
+def popular_items(hist_lf, top_k=50, skip_top_k=0):
     if top_k <= 0:
         return []
 
@@ -24,7 +24,7 @@ def popular_items(hist_lf, top_k=50):
             pl.len().alias("n_transactions"),
         ])
         .sort(["n_customers", "n_transactions"], descending=[True, True])
-        .head(top_k)
+        .slice(skip_top_k, top_k)
         .select("item_id")
         .collect()
         .get_column("item_id")
