@@ -139,17 +139,20 @@ def train_lgbm(
         verbose=-1,
     )
 
-    model.fit(
-        X_train,
-        y_train,
-        eval_set=[(X_holdout, y_holdout)],
-        eval_metric="auc",
-        categorical_feature=categorical_features,
-        callbacks=[
+    fit_kwargs = {
+        "X": X_train,
+        "y": y_train,
+        "eval_set": [(X_holdout, y_holdout)],
+        "eval_metric": "auc",
+        "callbacks": [
             lgb.early_stopping(stopping_rounds=100),
             lgb.log_evaluation(period=50),
         ],
-    )
+    }
+    if categorical_features:
+        fit_kwargs["categorical_feature"] = categorical_features
+
+    model.fit(**fit_kwargs)
 
     pred_holdout = model.predict_proba(X_holdout)[:, 1]
     auc = roc_auc_score(y_holdout, pred_holdout)

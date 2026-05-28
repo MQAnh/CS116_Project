@@ -71,6 +71,7 @@ RERANK_REPEAT_BOOST = 0.02
 RERANK_AFFINITY_BOOST = 0.015
 RERANK_POPULARITY_PENALTY = 0.01
 FEATURE_SELECTION_ENABLED = True
+LIGHTGBM_CATEGORICAL_FEATURES_ENABLED = False
 
 # Selected from feature_importance_7.7_points.csv with importance >= 150,
 # plus stable high-importance features from feature_importance_7.98_points.csv.

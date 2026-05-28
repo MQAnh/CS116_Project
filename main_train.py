@@ -89,7 +89,7 @@ def main():
             negative_ratio=cfg.TRAIN_NEGATIVE_RATIO,
             positive_fraction=cfg.TRAIN_POSITIVE_FRACTION,
             max_train_rows=cfg.TRAIN_MAX_ROWS,
-            categorical_features=cfg.CAT_COLS,
+            categorical_features=cfg.CAT_COLS if cfg.LIGHTGBM_CATEGORICAL_FEATURES_ENABLED else None,
         )
     if cfg.CLEAN_INTERMEDIATE_AFTER_TRAIN:
         with log_time("clean train intermediates"):
