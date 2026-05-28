@@ -98,6 +98,8 @@ def train_lgbm(
     positive_fraction=1.0,
     max_train_rows=3_000_000,
     categorical_features=None,
+    popular_negative_weight_column=None,
+    popular_negative_weight_alpha=0.0,
 ):
     """Step 8 từ notebook: train LightGBM binary baseline."""
     train_df = load_training_sample(
@@ -114,14 +116,31 @@ def train_lgbm(
         c for c in categorical_features
         if c in feature_cols
     ]
-
-    X_train, X_holdout, y_train, y_holdout = train_test_split(
+    sample_weight = build_popular_negative_weights(
         X,
         y,
-        test_size=0.1,
-        random_state=42,
-        stratify=y,
+        column=popular_negative_weight_column,
+        alpha=popular_negative_weight_alpha,
     )
+
+    if sample_weight is not None:
+        X_train, X_holdout, y_train, y_holdout, w_train, _ = train_test_split(
+            X,
+            y,
+            sample_weight,
+            test_size=0.1,
+            random_state=42,
+            stratify=y,
+        )
+    else:
+        X_train, X_holdout, y_train, y_holdout = train_test_split(
+            X,
+            y,
+            test_size=0.1,
+            random_state=42,
+            stratify=y,
+        )
+        w_train = None
 
     model = lgb.LGBMClassifier(
         objective="binary",
@@ -149,6 +168,8 @@ def train_lgbm(
             lgb.log_evaluation(period=50),
         ],
     }
+    if w_train is not None:
+        fit_kwargs["sample_weight"] = w_train
     if categorical_features:
         fit_kwargs["categorical_feature"] = categorical_features
 
@@ -173,3 +194,25 @@ def train_lgbm(
         importance_df.to_csv(importance_path, index=False)
 
     return model, feature_cols, auc
+
+
+def build_popular_negative_weights(X, y, column=None, alpha=0.0):
+    if not column or alpha <= 0 or column not in X.columns:
+        return None
+
+    popularity = pd.to_numeric(X[column], errors="coerce").fillna(0).clip(lower=0)
+    logged = np.log1p(popularity)
+    max_value = logged.max()
+    if max_value <= 0:
+        return None
+
+    normalized = logged / max_value
+    weights = np.ones(len(X), dtype=np.float32)
+    negative_mask = (y.to_numpy() == 0)
+    weights[negative_mask] += alpha * normalized.to_numpy(dtype=np.float32)[negative_mask]
+    log_step(
+        "popular negative weights enabled: "
+        f"column={column}, alpha={alpha}, "
+        f"min={weights.min():.3f}, mean={weights.mean():.3f}, max={weights.max():.3f}"
+    )
+    return weights

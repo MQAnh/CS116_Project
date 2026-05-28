@@ -90,6 +90,8 @@ def main():
             positive_fraction=cfg.TRAIN_POSITIVE_FRACTION,
             max_train_rows=cfg.TRAIN_MAX_ROWS,
             categorical_features=cfg.CAT_COLS if cfg.LIGHTGBM_CATEGORICAL_FEATURES_ENABLED else None,
+            popular_negative_weight_column=cfg.POPULAR_NEGATIVE_WEIGHT_COLUMN,
+            popular_negative_weight_alpha=cfg.POPULAR_NEGATIVE_WEIGHT_ALPHA,
         )
     if cfg.CLEAN_INTERMEDIATE_AFTER_TRAIN:
         with log_time("clean train intermediates"):
