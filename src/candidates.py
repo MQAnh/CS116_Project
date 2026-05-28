@@ -276,7 +276,11 @@ def build_train_candidates(
             active_users_lf,
             top_k=popular_top_k,
         ))
-    if items_lf is not None:
+    if (
+        items_lf is not None
+        and user_top_categories > 0
+        and category_items_per_category > 0
+    ):
         candidate_lfs.append(category_popular_candidates(
             train_hist_lf,
             items_lf,
@@ -322,7 +326,11 @@ def build_valid_candidates(
             active_users_lf,
             top_k=popular_top_k,
         ))
-    if items_lf is not None:
+    if (
+        items_lf is not None
+        and user_top_categories > 0
+        and category_items_per_category > 0
+    ):
         candidate_lfs.append(category_popular_candidates(
             valid_hist_lf,
             items_lf,

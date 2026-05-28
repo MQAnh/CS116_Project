@@ -50,11 +50,11 @@ RECENT_TOP_K_TRAIN = 20
 FREQUENT_TOP_K_TRAIN = 10
 RECENT_TOP_K_VALID = 10
 FREQUENT_TOP_K_VALID = 10
-POPULAR_TOP_K = 50
+POPULAR_TOP_K = 0
 POPULAR_CANDIDATE_TOP_K = 0
 CATEGORY_CANDIDATE_COL = "category_l2"
-USER_TOP_CATEGORIES = 2
-CATEGORY_ITEMS_PER_CATEGORY = 10
+USER_TOP_CATEGORIES = 0
+CATEGORY_ITEMS_PER_CATEGORY = 0
 COOCCURRENCE_ANCHOR_TOP_K = 10
 COOCCURRENCE_TOP_K = 5
 COOCCURRENCE_MAX_BILL_ITEMS = 15
@@ -74,9 +74,10 @@ POPULAR_NEGATIVE_WEIGHT_ALPHA = 0.0
 CLEAN_INTERMEDIATE_AFTER_TRAIN = True
 RERANK_REPEAT_BOOST = 0.02
 RERANK_AFFINITY_BOOST = 0.015
-RERANK_POPULARITY_PENALTY = 0.03
+RERANK_POPULARITY_PENALTY = 0.0
 FEATURE_SELECTION_ENABLED = True
 LIGHTGBM_CATEGORICAL_FEATURES_ENABLED = False
+DROP_POPULAR_SIGNAL_FEATURES = True
 
 # Selected from feature_importance_7.7_points.csv with importance >= 150,
 # plus stable high-importance features from feature_importance_7.98_points.csv.
@@ -160,6 +161,28 @@ SELECTED_FEATURES = [
     "ub_total_quantity",
     "user_n_transactions",
 ]
+
+POPULAR_SIGNAL_FEATURES = {
+    "item_n_transactions",
+    "item_n_customers",
+    "item_n_bills",
+    "item_total_quantity",
+    "item_n_customers_30d",
+    "item_n_customers_60d",
+    "item_n_transactions_30d",
+    "item_n_transactions_60d",
+    "item_transaction_share_30d",
+    "item_transaction_share_60d",
+    "item_days_since_first_seen",
+    "item_main_location_transaction_share",
+}
+
+if DROP_POPULAR_SIGNAL_FEATURES:
+    SELECTED_FEATURES = [
+        feature
+        for feature in SELECTED_FEATURES
+        if feature not in POPULAR_SIGNAL_FEATURES
+    ]
 
 DROP_COLS = [
     "customer_id",

@@ -13,6 +13,9 @@ def collect_user_ids(user_ids_lf):
 
 
 def popular_items(hist_lf, top_k=50):
+    if top_k <= 0:
+        return []
+
     return (
         hist_lf
         .group_by("item_id")
