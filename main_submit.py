@@ -14,7 +14,7 @@ from src.fallbacks import (
     popular_items,
     recent_history_fallback_by_user,
 )
-from src.features import build_feature_chunk, make_feature_sources
+from src.features import build_feature_chunk, make_cached_feature_sources
 from src.logging_utils import log_step, log_time
 from src.preprocess import (
     get_preprocess_spec,
@@ -32,6 +32,7 @@ def main():
     with log_time("clean stale submission intermediates"):
         cleanup_paths([
             cfg.FINAL_FEATURES_CHUNKS_DIR,
+            cfg.FINAL_FEATURE_SOURCES_DIR,
             cfg.FINAL_MODEL_READY_CHUNKS_DIR,
             cfg.FINAL_FEATURES_PATH,
             cfg.FINAL_MODEL_READY_PATH,
@@ -39,6 +40,7 @@ def main():
         if cfg.PREPROCESS_METADATA_PATH.exists():
             cleanup_paths([
                 cfg.TRAIN_FEATURES_CHUNKS_DIR,
+                cfg.TRAIN_FEATURE_SOURCES_DIR,
                 cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
                 cfg.TRAIN_FEATURES_PATH,
                 cfg.TRAIN_MODEL_READY_PATH,
@@ -92,7 +94,11 @@ def main():
         )
 
     with log_time("build final features and prepare matrix"):
-        feature_sources = make_feature_sources(splits["final_hist_lf"], items_lf)
+        feature_sources = make_cached_feature_sources(
+            splits["final_hist_lf"],
+            items_lf,
+            cfg.FINAL_FEATURE_SOURCES_DIR,
+        )
         output_dir = reset_output_dir(cfg.FINAL_MODEL_READY_CHUNKS_DIR)
         for chunk_idx in range(cfg.FEATURE_BUILD_CHUNKS):
             chunk_name = f"part_{chunk_idx:03d}.parquet"
@@ -114,6 +120,7 @@ def main():
                 ["customer_id", "item_id"],
             )
             chunk_model_lf.sink_parquet(output_dir / chunk_name)
+        cleanup_paths([cfg.FINAL_FEATURE_SOURCES_DIR])
 
     with log_time("predict final top-k"):
         top10 = predict_topk_from_parquet(

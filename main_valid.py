@@ -5,7 +5,7 @@ from src.data_loader import load_data
 from src.splits import make_time_splits
 from src.candidates import build_valid_candidates
 from src.labels import make_ground_truth, make_labeled_dataset
-from src.features import build_feature_chunk, make_feature_sources
+from src.features import build_feature_chunk, make_cached_feature_sources
 from src.logging_utils import log_step, log_time
 from src.preprocess import (
     get_preprocess_spec,
@@ -34,6 +34,7 @@ def main():
     with log_time("clean stale validation intermediates"):
         cleanup_paths([
             cfg.VALID_FEATURES_CHUNKS_DIR,
+            cfg.VALID_FEATURE_SOURCES_DIR,
             cfg.VALID_MODEL_READY_CHUNKS_DIR,
             cfg.VALID_FEATURES_PATH,
             cfg.VALID_MODEL_READY_PATH,
@@ -41,6 +42,7 @@ def main():
         if cfg.PREPROCESS_METADATA_PATH.exists():
             cleanup_paths([
                 cfg.TRAIN_FEATURES_CHUNKS_DIR,
+                cfg.TRAIN_FEATURE_SOURCES_DIR,
                 cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
                 cfg.TRAIN_FEATURES_PATH,
                 cfg.TRAIN_MODEL_READY_PATH,
@@ -106,7 +108,11 @@ def main():
         feature_cols = numeric_cols + cat_cols
 
     with log_time("build validation features and prepare matrix"):
-        feature_sources = make_feature_sources(splits["valid_hist_lf"], items_lf)
+        feature_sources = make_cached_feature_sources(
+            splits["valid_hist_lf"],
+            items_lf,
+            cfg.VALID_FEATURE_SOURCES_DIR,
+        )
         output_dir = reset_output_dir(cfg.VALID_MODEL_READY_CHUNKS_DIR)
         for chunk_idx in range(cfg.FEATURE_BUILD_CHUNKS):
             chunk_name = f"part_{chunk_idx:03d}.parquet"
@@ -128,7 +134,10 @@ def main():
                 ["customer_id", "item_id", "target"],
             )
             chunk_model_lf.sink_parquet(output_dir / chunk_name)
-        cleanup_paths([cfg.VALID_DATASET_LABELS_PATH])
+        cleanup_paths([
+            cfg.VALID_DATASET_LABELS_PATH,
+            cfg.VALID_FEATURE_SOURCES_DIR,
+        ])
 
     with log_time("predict validation top-k"):
         top10 = predict_topk_from_parquet(

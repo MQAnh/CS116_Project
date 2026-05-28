@@ -324,6 +324,28 @@ def make_feature_sources(hist_lf, items_lf, max_date=None):
     }
 
 
+def materialize_feature_sources(feature_sources, output_dir):
+    output_dir = output_dir.resolve()
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    cached_sources = {}
+    for name, source_lf in feature_sources.items():
+        source_path = output_dir / f"{name}.parquet"
+        log_step(f"cache feature source: {source_path.name}")
+        source_lf.sink_parquet(source_path)
+        cached_sources[name] = pl.scan_parquet(source_path)
+    return cached_sources
+
+
+def make_cached_feature_sources(hist_lf, items_lf, output_dir, max_date=None):
+    return materialize_feature_sources(
+        make_feature_sources(hist_lf, items_lf, max_date=max_date),
+        output_dir,
+    )
+
+
 def build_feature_chunk(dataset_lf, feature_sources, chunk_idx, n_chunks):
     chunk_dataset_lf = dataset_lf.filter(
         (pl.col("customer_id") % n_chunks) == chunk_idx
@@ -331,13 +353,25 @@ def build_feature_chunk(dataset_lf, feature_sources, chunk_idx, n_chunks):
     return join_features(chunk_dataset_lf, **feature_sources)
 
 
-def build_features_chunked(hist_lf, dataset_lf, items_lf, output_dir, n_chunks=16):
+def build_features_chunked(
+    hist_lf,
+    dataset_lf,
+    items_lf,
+    output_dir,
+    n_chunks=16,
+    feature_sources_dir=None,
+):
     output_dir = output_dir.resolve()
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     feature_sources = make_feature_sources(hist_lf, items_lf)
+    if feature_sources_dir is not None:
+        feature_sources = materialize_feature_sources(
+            feature_sources,
+            feature_sources_dir,
+        )
 
     for chunk_idx in range(n_chunks):
         chunk_path = output_dir / f"part_{chunk_idx:03d}.parquet"

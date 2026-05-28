@@ -20,6 +20,7 @@ def main():
     with log_time("clean stale train intermediates"):
         cleanup_paths([
             cfg.TRAIN_FEATURES_CHUNKS_DIR,
+            cfg.TRAIN_FEATURE_SOURCES_DIR,
             cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
             cfg.TRAIN_FEATURES_PATH,
             cfg.TRAIN_MODEL_READY_PATH,
@@ -67,6 +68,7 @@ def main():
             items_lf,
             cfg.TRAIN_FEATURES_CHUNKS_DIR,
             n_chunks=cfg.FEATURE_BUILD_CHUNKS,
+            feature_sources_dir=cfg.TRAIN_FEATURE_SOURCES_DIR,
         )
 
     with log_time("prepare train matrix"):
@@ -97,6 +99,7 @@ def main():
         with log_time("clean train intermediates"):
             cleanup_paths([
                 cfg.TRAIN_FEATURES_CHUNKS_DIR,
+                cfg.TRAIN_FEATURE_SOURCES_DIR,
                 cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
                 cfg.TRAIN_CANDIDATES_PATH,
                 cfg.TRAIN_DATASET_LABELS_PATH,
