@@ -5,6 +5,7 @@ from src.cleanup import cleanup_paths
 from src.candidates import build_valid_candidates
 from src.data_loader import load_data
 from src.evaluate import (
+    print_submission_item_concentration,
     predict_topk_from_parquet,
     save_submission_pickle,
     topk_to_submission_dict,
@@ -158,6 +159,11 @@ def main():
             user_ids=user_ids,
             fallback_items=fallback_items,
             fallback_by_user=fallback_by_user,
+        )
+        print_submission_item_concentration(
+            submission_dict,
+            k=10,
+            label="Final submission",
         )
         save_submission_pickle(submission_dict, cfg.SUBMISSION_PATH)
     log_step("submission pipeline finished")

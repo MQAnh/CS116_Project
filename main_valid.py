@@ -16,6 +16,7 @@ from src.preprocess import (
 from src.evaluate import (
     ground_truth_to_dict,
     print_candidate_recall_report,
+    print_submission_item_concentration,
     predict_topk_from_parquet,
     server_precision_at_k,
     topk_to_submission_dict,
@@ -183,6 +184,11 @@ def main():
             user_ids=user_ids,
             fallback_items=fallback_items,
             fallback_by_user=fallback_by_user,
+        )
+        print_submission_item_concentration(
+            submission_dict,
+            k=10,
+            label="Validation submission",
         )
         print(
             "Server Precision@10 (with fallback):",

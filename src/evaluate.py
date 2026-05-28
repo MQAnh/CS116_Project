@@ -1,5 +1,6 @@
 import pickle
 import heapq
+from collections import Counter
 
 import joblib
 import numpy as np
@@ -447,6 +448,41 @@ def topk_to_submission_dict(
                     items.append(item_id)
 
     return submission
+
+
+def print_submission_item_concentration(submission, k=10, label="submission"):
+    item_counts = Counter()
+    slot_counts = [Counter() for _ in range(k)]
+    lengths = []
+
+    for items in submission.values():
+        top_items = list(items[:k])
+        lengths.append(len(top_items))
+        for idx, item_id in enumerate(top_items):
+            item_counts[item_id] += 1
+            slot_counts[idx][item_id] += 1
+
+    if not lengths:
+        print(f"\n{label} item concentration")
+        print("  users=0")
+        return
+
+    total_slots = sum(item_counts.values())
+    n_users = len(lengths)
+    print(f"\n{label} item concentration")
+    print(
+        "  Users: "
+        f"{n_users:,}, slots={total_slots:,}, unique_items={len(item_counts):,}, "
+        f"len_min={min(lengths)}, len_mean={sum(lengths) / n_users:.2f}, "
+        f"len_max={max(lengths)}"
+    )
+    shares = []
+    for top_n in [1, 5, 10, 20, 50, 100]:
+        top_count = sum(count for _, count in item_counts.most_common(top_n))
+        shares.append(f"top{top_n}={top_count / total_slots * 100:.2f}%")
+    print("  Slot concentration: " + ", ".join(shares))
+    print(f"  Top slot-1 items: {slot_counts[0].most_common(8)}")
+    print(f"  Top all-slot items: {item_counts.most_common(12)}")
 
 
 def save_submission_pickle(submission_dict, output_path):
