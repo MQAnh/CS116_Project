@@ -11,6 +11,14 @@ def get_active_users(hist_lf, min_bills=2):
     )
 
 
+def filter_user_chunk(user_ids_lf, chunk_idx, n_chunks):
+    if n_chunks <= 1:
+        return user_ids_lf
+    return user_ids_lf.filter(
+        (pl.col("customer_id").cast(pl.Int64) % n_chunks) == chunk_idx
+    )
+
+
 def recent_candidates(hist_lf, active_users_lf, top_k=20, use_unique=True, source_name="recent"):
     lf = (
         hist_lf
@@ -333,8 +341,10 @@ def build_train_candidates(
     co_top_k=10,
     co_max_bill_items=30,
     include_cooccurrence=True,
+    active_users_lf=None,
 ):
-    active_users_lf = get_active_users(train_hist_lf, min_bills=min_bills)
+    if active_users_lf is None:
+        active_users_lf = get_active_users(train_hist_lf, min_bills=min_bills)
     recent_lf = recent_candidates(train_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=True)
     freq_lf = frequent_candidates(train_hist_lf, active_users_lf, top_k=frequent_top_k)
     candidate_lfs = [recent_lf, freq_lf]
@@ -392,8 +402,10 @@ def build_valid_candidates(
     co_max_bill_items=30,
     include_cooccurrence=True,
     co_hist_lf=None,
+    active_users_lf=None,
 ):
-    active_users_lf = get_active_users(valid_hist_lf, min_bills=min_bills)
+    if active_users_lf is None:
+        active_users_lf = get_active_users(valid_hist_lf, min_bills=min_bills)
     recent_lf = recent_candidates(valid_hist_lf, active_users_lf, top_k=recent_top_k, use_unique=False).unique(["customer_id", "item_id"])
     freq_lf = frequent_candidates(valid_hist_lf, active_users_lf, top_k=frequent_top_k).unique(["customer_id", "item_id"])
     candidate_lfs = [recent_lf, freq_lf]

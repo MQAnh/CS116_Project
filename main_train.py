@@ -4,7 +4,7 @@ from src import config as cfg
 from src.cleanup import cleanup_paths
 from src.data_loader import load_data
 from src.splits import make_time_splits
-from src.candidates import build_train_candidates
+from src.candidates import build_train_candidates, filter_user_chunk, get_active_users
 from src.labels import make_ground_truth, make_labeled_dataset
 from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
@@ -22,6 +22,8 @@ def main():
             cfg.TRAIN_FEATURES_CHUNKS_DIR,
             cfg.TRAIN_FEATURE_SOURCES_DIR,
             cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
+            cfg.TRAIN_CANDIDATES_CHUNKS_DIR,
+            cfg.TRAIN_CANDIDATES_PATH,
             cfg.TRAIN_FEATURES_PATH,
             cfg.TRAIN_MODEL_READY_PATH,
         ])
@@ -38,24 +40,45 @@ def main():
         )
 
     with log_time("build train candidates"):
-        train_candidates_lf = build_train_candidates(
+        active_users_lf = get_active_users(
             splits["train_hist_lf"],
-            items_lf=items_lf,
             min_bills=cfg.MIN_BILLS_ACTIVE_USER,
-            recent_top_k=cfg.RECENT_TOP_K_TRAIN,
-            frequent_top_k=cfg.FREQUENT_TOP_K_TRAIN,
-            popular_top_k=cfg.POPULAR_CANDIDATE_TOP_K,
-            category_col=cfg.CATEGORY_CANDIDATE_COL,
-            user_top_categories=cfg.USER_TOP_CATEGORIES,
-            category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
-            user_top_locations=cfg.USER_TOP_LOCATIONS,
-            location_items_per_location=cfg.LOCATION_ITEMS_PER_LOCATION,
-            co_anchor_top_k=cfg.COOCCURRENCE_ANCHOR_TOP_K,
-            co_top_k=cfg.COOCCURRENCE_TOP_K,
-            co_max_bill_items=cfg.COOCCURRENCE_MAX_BILL_ITEMS,
         )
-        train_candidates_lf.sink_parquet(cfg.TRAIN_CANDIDATES_PATH)
-        train_candidates_lf = pl.scan_parquet(cfg.TRAIN_CANDIDATES_PATH)
+        cfg.TRAIN_CANDIDATES_CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
+        for chunk_idx in range(cfg.CANDIDATE_BUILD_CHUNKS):
+            chunk_name = f"part_{chunk_idx:03d}.parquet"
+            log_step(
+                "build train candidate chunk "
+                f"{chunk_idx + 1}/{cfg.CANDIDATE_BUILD_CHUNKS}: {chunk_name}"
+            )
+            active_chunk_lf = filter_user_chunk(
+                active_users_lf,
+                chunk_idx,
+                cfg.CANDIDATE_BUILD_CHUNKS,
+            )
+            train_candidates_lf = build_train_candidates(
+                splits["train_hist_lf"],
+                items_lf=items_lf,
+                min_bills=cfg.MIN_BILLS_ACTIVE_USER,
+                recent_top_k=cfg.RECENT_TOP_K_TRAIN,
+                frequent_top_k=cfg.FREQUENT_TOP_K_TRAIN,
+                popular_top_k=cfg.POPULAR_CANDIDATE_TOP_K,
+                category_col=cfg.CATEGORY_CANDIDATE_COL,
+                user_top_categories=cfg.USER_TOP_CATEGORIES,
+                category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
+                user_top_locations=cfg.USER_TOP_LOCATIONS,
+                location_items_per_location=cfg.LOCATION_ITEMS_PER_LOCATION,
+                co_anchor_top_k=cfg.COOCCURRENCE_ANCHOR_TOP_K,
+                co_top_k=cfg.COOCCURRENCE_TOP_K,
+                co_max_bill_items=cfg.COOCCURRENCE_MAX_BILL_ITEMS,
+                active_users_lf=active_chunk_lf,
+            )
+            train_candidates_lf.sink_parquet(
+                cfg.TRAIN_CANDIDATES_CHUNKS_DIR / chunk_name
+            )
+        train_candidates_lf = pl.scan_parquet(
+            str(cfg.TRAIN_CANDIDATES_CHUNKS_DIR / "*.parquet")
+        )
 
     with log_time("create train labels"):
         train_gt_lf = make_ground_truth(splits["train_label_lf"])
@@ -108,6 +131,7 @@ def main():
                 cfg.TRAIN_FEATURES_CHUNKS_DIR,
                 cfg.TRAIN_FEATURE_SOURCES_DIR,
                 cfg.TRAIN_MODEL_READY_CHUNKS_DIR,
+                cfg.TRAIN_CANDIDATES_CHUNKS_DIR,
                 cfg.TRAIN_CANDIDATES_PATH,
                 cfg.TRAIN_DATASET_LABELS_PATH,
                 cfg.TRAIN_FEATURES_PATH,

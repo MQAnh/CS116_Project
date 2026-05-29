@@ -2,7 +2,7 @@ import polars as pl
 
 from src import config as cfg
 from src.cleanup import cleanup_paths
-from src.candidates import build_valid_candidates
+from src.candidates import build_valid_candidates, filter_user_chunk, get_active_users
 from src.data_loader import load_data
 from src.evaluate import (
     print_submission_item_concentration,
@@ -35,6 +35,8 @@ def main():
             cfg.FINAL_FEATURES_CHUNKS_DIR,
             cfg.FINAL_FEATURE_SOURCES_DIR,
             cfg.FINAL_MODEL_READY_CHUNKS_DIR,
+            cfg.FINAL_CANDIDATES_CHUNKS_DIR,
+            cfg.FINAL_CANDIDATES_PATH,
             cfg.FINAL_FEATURES_PATH,
             cfg.FINAL_MODEL_READY_PATH,
         ])
@@ -64,26 +66,47 @@ def main():
             final_co_hist_lf = final_co_hist_lf.filter(
                 pl.col("month").is_between(*cfg.FINAL_COOCCURRENCE_HISTORY_MONTHS)
             )
-        final_candidates_lf = build_valid_candidates(
+        active_users_lf = get_active_users(
             splits["final_hist_lf"],
-            items_lf=items_lf,
             min_bills=cfg.MIN_BILLS_ACTIVE_USER,
-            recent_top_k=cfg.RECENT_TOP_K_VALID,
-            frequent_top_k=cfg.FREQUENT_TOP_K_VALID,
-            popular_top_k=cfg.POPULAR_CANDIDATE_TOP_K,
-            category_col=cfg.CATEGORY_CANDIDATE_COL,
-            user_top_categories=cfg.USER_TOP_CATEGORIES,
-            category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
-            user_top_locations=cfg.USER_TOP_LOCATIONS,
-            location_items_per_location=cfg.LOCATION_ITEMS_PER_LOCATION,
-            co_anchor_top_k=cfg.FINAL_COOCCURRENCE_ANCHOR_TOP_K,
-            co_top_k=cfg.FINAL_COOCCURRENCE_TOP_K,
-            co_max_bill_items=cfg.FINAL_COOCCURRENCE_MAX_BILL_ITEMS,
-            include_cooccurrence=cfg.FINAL_COOCCURRENCE_ENABLED,
-            co_hist_lf=final_co_hist_lf,
         )
-        final_candidates_lf.sink_parquet(cfg.FINAL_CANDIDATES_PATH)
-        final_candidates_lf = pl.scan_parquet(cfg.FINAL_CANDIDATES_PATH)
+        cfg.FINAL_CANDIDATES_CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
+        for chunk_idx in range(cfg.CANDIDATE_BUILD_CHUNKS):
+            chunk_name = f"part_{chunk_idx:03d}.parquet"
+            log_step(
+                "build final candidate chunk "
+                f"{chunk_idx + 1}/{cfg.CANDIDATE_BUILD_CHUNKS}: {chunk_name}"
+            )
+            active_chunk_lf = filter_user_chunk(
+                active_users_lf,
+                chunk_idx,
+                cfg.CANDIDATE_BUILD_CHUNKS,
+            )
+            final_candidates_lf = build_valid_candidates(
+                splits["final_hist_lf"],
+                items_lf=items_lf,
+                min_bills=cfg.MIN_BILLS_ACTIVE_USER,
+                recent_top_k=cfg.RECENT_TOP_K_VALID,
+                frequent_top_k=cfg.FREQUENT_TOP_K_VALID,
+                popular_top_k=cfg.POPULAR_CANDIDATE_TOP_K,
+                category_col=cfg.CATEGORY_CANDIDATE_COL,
+                user_top_categories=cfg.USER_TOP_CATEGORIES,
+                category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
+                user_top_locations=cfg.USER_TOP_LOCATIONS,
+                location_items_per_location=cfg.LOCATION_ITEMS_PER_LOCATION,
+                co_anchor_top_k=cfg.FINAL_COOCCURRENCE_ANCHOR_TOP_K,
+                co_top_k=cfg.FINAL_COOCCURRENCE_TOP_K,
+                co_max_bill_items=cfg.FINAL_COOCCURRENCE_MAX_BILL_ITEMS,
+                include_cooccurrence=cfg.FINAL_COOCCURRENCE_ENABLED,
+                co_hist_lf=final_co_hist_lf,
+                active_users_lf=active_chunk_lf,
+            )
+            final_candidates_lf.sink_parquet(
+                cfg.FINAL_CANDIDATES_CHUNKS_DIR / chunk_name
+            )
+        final_candidates_lf = pl.scan_parquet(
+            str(cfg.FINAL_CANDIDATES_CHUNKS_DIR / "*.parquet")
+        )
 
     with log_time("prepare final preprocess spec"):
         selected_features = inference_selected_features(
