@@ -131,6 +131,68 @@ def category_popular_candidates(
     return lf
 
 
+def location_popular_candidates(
+    hist_lf,
+    active_users_lf,
+    user_top_locations=1,
+    items_per_location=3,
+    source_name="location_popular",
+):
+    user_locations_lf = (
+        hist_lf
+        .join(active_users_lf, on="customer_id", how="inner")
+        .filter(pl.col("location").is_not_null())
+        .group_by(["customer_id", "location"])
+        .agg([
+            pl.len().alias("user_location_transactions"),
+            pl.col("updated_date").max().alias("user_location_last_seen_at"),
+        ])
+        .sort(
+            ["customer_id", "user_location_transactions", "user_location_last_seen_at"],
+            descending=[False, True, True],
+        )
+        .with_columns(
+            pl.col("user_location_transactions")
+            .rank("ordinal", descending=True)
+            .over("customer_id")
+            .alias("user_location_rank")
+        )
+        .filter(pl.col("user_location_rank") <= user_top_locations)
+        .select(["customer_id", "location", "user_location_rank"])
+    )
+    location_items_lf = (
+        hist_lf
+        .filter(pl.col("location").is_not_null())
+        .group_by(["location", "item_id"])
+        .agg([
+            pl.col("customer_id").n_unique().alias("location_item_customers"),
+            pl.len().alias("location_item_transactions"),
+            pl.col("quantity").sum().alias("location_item_quantity"),
+        ])
+        .sort(
+            ["location", "location_item_customers", "location_item_transactions", "location_item_quantity"],
+            descending=[False, True, True, True],
+        )
+        .with_columns(
+            pl.col("location_item_customers")
+            .rank("ordinal", descending=True)
+            .over("location")
+            .alias("location_item_rank")
+        )
+        .filter(pl.col("location_item_rank") <= items_per_location)
+        .select(["location", "item_id", "location_item_rank"])
+    )
+    lf = user_locations_lf.join(location_items_lf, on="location", how="inner").select([
+        "customer_id",
+        "item_id",
+        "user_location_rank",
+        "location_item_rank",
+    ])
+    if source_name is not None:
+        lf = lf.with_columns(pl.lit(source_name).alias("candidate_source"))
+    return lf
+
+
 def cooccurrence_candidates(
     hist_lf,
     active_users_lf,
@@ -214,6 +276,8 @@ def merge_candidates(candidate_lfs):
         "popular_rank",
         "user_category_rank",
         "category_item_rank",
+        "user_location_rank",
+        "location_item_rank",
         "cooccurrence_rank",
     ]
     source_lfs = []
@@ -236,6 +300,7 @@ def merge_candidates(candidate_lfs):
             (pl.col("candidate_source") == "frequent").cast(pl.Int8).alias("is_frequent_candidate"),
             (pl.col("candidate_source") == "popular").cast(pl.Int8).alias("is_popular_candidate"),
             (pl.col("candidate_source") == "category_popular").cast(pl.Int8).alias("is_category_candidate"),
+            (pl.col("candidate_source") == "location_popular").cast(pl.Int8).alias("is_location_candidate"),
             (pl.col("candidate_source") == "cooccurrence").cast(pl.Int8).alias("is_cooccurrence_candidate"),
         ])
         .group_by(["customer_id", "item_id"])
@@ -244,6 +309,7 @@ def merge_candidates(candidate_lfs):
             pl.col("is_frequent_candidate").max(),
             pl.col("is_popular_candidate").max(),
             pl.col("is_category_candidate").max(),
+            pl.col("is_location_candidate").max(),
             pl.col("is_cooccurrence_candidate").max(),
             pl.col("candidate_source").n_unique().alias("n_candidate_sources"),
             *[pl.col(c).min().fill_null(9999).cast(pl.Int32).alias(c) for c in rank_cols],
@@ -261,6 +327,8 @@ def build_train_candidates(
     category_col="category_l2",
     user_top_categories=3,
     category_items_per_category=20,
+    user_top_locations=1,
+    location_items_per_location=3,
     co_anchor_top_k=20,
     co_top_k=10,
     co_max_bill_items=30,
@@ -289,6 +357,13 @@ def build_train_candidates(
             user_top_categories=user_top_categories,
             items_per_category=category_items_per_category,
         ))
+    if user_top_locations > 0 and location_items_per_location > 0:
+        candidate_lfs.append(location_popular_candidates(
+            train_hist_lf,
+            active_users_lf,
+            user_top_locations=user_top_locations,
+            items_per_location=location_items_per_location,
+        ))
     if include_cooccurrence:
         candidate_lfs.append(cooccurrence_candidates(
             train_hist_lf,
@@ -310,6 +385,8 @@ def build_valid_candidates(
     category_col="category_l2",
     user_top_categories=3,
     category_items_per_category=20,
+    user_top_locations=1,
+    location_items_per_location=3,
     co_anchor_top_k=20,
     co_top_k=10,
     co_max_bill_items=30,
@@ -338,6 +415,13 @@ def build_valid_candidates(
             category_col=category_col,
             user_top_categories=user_top_categories,
             items_per_category=category_items_per_category,
+        ))
+    if user_top_locations > 0 and location_items_per_location > 0:
+        candidate_lfs.append(location_popular_candidates(
+            valid_hist_lf,
+            active_users_lf,
+            user_top_locations=user_top_locations,
+            items_per_location=location_items_per_location,
         ))
     if include_cooccurrence:
         co_source_lf = valid_hist_lf if co_hist_lf is None else co_hist_lf

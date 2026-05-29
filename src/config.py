@@ -58,6 +58,8 @@ ROTATE_FALLBACK_ITEMS = False
 CATEGORY_CANDIDATE_COL = "category_l2"
 USER_TOP_CATEGORIES = 0
 CATEGORY_ITEMS_PER_CATEGORY = 0
+USER_TOP_LOCATIONS = 1
+LOCATION_ITEMS_PER_LOCATION = 3
 COOCCURRENCE_ANCHOR_TOP_K = 10
 COOCCURRENCE_TOP_K = 5
 COOCCURRENCE_MAX_BILL_ITEMS = 15
@@ -130,6 +132,11 @@ SELECTED_FEATURES = [
     "item_n_transactions_60d",
     "user_n_unique_items",
     "item_user_discount_rate_diff",
+    "is_location_candidate",
+    "location_item_rank",
+    "user_location_rank",
+    "item_location_transactions",
+    "item_location_customers",
     "ui_n_transactions_60d",
     "ul1_n_transactions_30d",
     "user_discount_positive_rate",

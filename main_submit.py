@@ -74,6 +74,8 @@ def main():
             category_col=cfg.CATEGORY_CANDIDATE_COL,
             user_top_categories=cfg.USER_TOP_CATEGORIES,
             category_items_per_category=cfg.CATEGORY_ITEMS_PER_CATEGORY,
+            user_top_locations=cfg.USER_TOP_LOCATIONS,
+            location_items_per_location=cfg.LOCATION_ITEMS_PER_LOCATION,
             co_anchor_top_k=cfg.FINAL_COOCCURRENCE_ANCHOR_TOP_K,
             co_top_k=cfg.FINAL_COOCCURRENCE_TOP_K,
             co_max_bill_items=cfg.FINAL_COOCCURRENCE_MAX_BILL_ITEMS,
