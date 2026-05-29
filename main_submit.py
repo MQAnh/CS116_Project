@@ -59,9 +59,11 @@ def main():
         )
 
     with log_time("build final candidates"):
-        final_co_hist_lf = splits["final_hist_lf"].filter(
-            pl.col("month").is_between(*cfg.FINAL_COOCCURRENCE_HISTORY_MONTHS)
-        )
+        final_co_hist_lf = splits["final_hist_lf"]
+        if cfg.FINAL_COOCCURRENCE_HISTORY_MONTHS is not None:
+            final_co_hist_lf = final_co_hist_lf.filter(
+                pl.col("month").is_between(*cfg.FINAL_COOCCURRENCE_HISTORY_MONTHS)
+            )
         final_candidates_lf = build_valid_candidates(
             splits["final_hist_lf"],
             items_lf=items_lf,
