@@ -58,8 +58,8 @@ ROTATE_FALLBACK_ITEMS = False
 CATEGORY_CANDIDATE_COL = "category_l2"
 USER_TOP_CATEGORIES = 0
 CATEGORY_ITEMS_PER_CATEGORY = 0
-USER_TOP_LOCATIONS = 1
-LOCATION_ITEMS_PER_LOCATION = 3
+USER_TOP_LOCATIONS = 0
+LOCATION_ITEMS_PER_LOCATION = 0
 COOCCURRENCE_ANCHOR_TOP_K = 10
 COOCCURRENCE_TOP_K = 5
 COOCCURRENCE_MAX_BILL_ITEMS = 15
@@ -132,11 +132,6 @@ SELECTED_FEATURES = [
     "item_n_transactions_60d",
     "user_n_unique_items",
     "item_user_discount_rate_diff",
-    "is_location_candidate",
-    "location_item_rank",
-    "user_location_rank",
-    "item_location_transactions",
-    "item_location_customers",
     "ui_n_transactions_60d",
     "ul1_n_transactions_30d",
     "user_discount_positive_rate",
@@ -186,6 +181,15 @@ POPULAR_SIGNAL_FEATURES = {
     "item_transaction_share_60d",
     "item_days_since_first_seen",
     "item_main_location_transaction_share",
+    "is_popular_candidate",
+    "popular_rank",
+    "is_category_candidate",
+    "category_item_rank",
+    "is_location_candidate",
+    "location_item_rank",
+    "user_location_rank",
+    "item_location_transactions",
+    "item_location_customers",
 }
 
 if DROP_POPULAR_SIGNAL_FEATURES:

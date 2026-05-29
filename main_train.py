@@ -8,7 +8,7 @@ from src.candidates import build_train_candidates
 from src.labels import make_ground_truth, make_labeled_dataset
 from src.features import build_features_chunked
 from src.logging_utils import log_step, log_time
-from src.preprocess import prepare_train_matrix_chunked
+from src.preprocess import assert_no_blocked_features, prepare_train_matrix_chunked
 from src.train import train_lgbm
 
 
@@ -81,6 +81,11 @@ def main():
             cfg.CAT_COLS,
             metadata_path=cfg.PREPROCESS_METADATA_PATH,
             selected_features=cfg.SELECTED_FEATURES if cfg.FEATURE_SELECTION_ENABLED else None,
+        )
+        assert_no_blocked_features(
+            feature_cols,
+            cfg.POPULAR_SIGNAL_FEATURES,
+            label="train feature columns",
         )
 
     with log_time("train LightGBM"):

@@ -8,6 +8,7 @@ from src.labels import make_ground_truth, make_labeled_dataset
 from src.features import build_feature_chunk, make_cached_feature_sources
 from src.logging_utils import log_step, log_time
 from src.preprocess import (
+    assert_no_blocked_features,
     get_preprocess_spec,
     inference_selected_features,
     prepare_matrix_lf,
@@ -24,7 +25,6 @@ from src.evaluate import (
 )
 from src.fallbacks import (
     collect_user_ids,
-    popular_items,
     recent_history_fallback_by_user,
 )
 
@@ -101,6 +101,11 @@ def main():
             cfg.FEATURE_COLUMNS_PATH,
             cfg.SELECTED_FEATURES if cfg.FEATURE_SELECTION_ENABLED else None,
         )
+        assert_no_blocked_features(
+            selected_features,
+            cfg.POPULAR_SIGNAL_FEATURES,
+            label="validation feature columns",
+        )
         numeric_cols, cat_cols, category_mappings = get_preprocess_spec(
             cfg.TRAIN_FEATURES_CHUNKS_DIR,
             cfg.DROP_COLS,
@@ -176,11 +181,7 @@ def main():
             user_ids_lf=fallback_user_ids_lf,
             k=10,
         )
-        fallback_items = popular_items(
-            splits["valid_hist_lf"],
-            top_k=cfg.FALLBACK_ITEM_TOP_K,
-            skip_top_k=cfg.FALLBACK_ITEM_SKIP_TOP_K,
-        )
+        fallback_items = []
 
     with log_time("evaluate validation predictions"):
         raw_submission_dict = topk_to_submission_dict(top10, k=10)

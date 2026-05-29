@@ -46,6 +46,18 @@ def inference_selected_features(feature_columns_path, fallback_selected_features
     return fallback_selected_features
 
 
+def assert_no_blocked_features(feature_cols, blocked_features, label="feature columns"):
+    blocked = sorted(set(feature_cols or []) & set(blocked_features or []))
+    if blocked:
+        blocked_preview = ", ".join(blocked[:20])
+        if len(blocked) > 20:
+            blocked_preview += f", ... (+{len(blocked) - 20} more)"
+        raise ValueError(
+            f"{label} still contains disabled popular features: {blocked_preview}. "
+            "Retrain the model after clearing old feature metadata."
+        )
+
+
 def build_category_mappings(train_features_lf, cat_cols):
     mappings = {}
     for c in cat_cols:
