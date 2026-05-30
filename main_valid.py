@@ -210,6 +210,11 @@ def main():
     with log_time("evaluate validation predictions"):
         raw_submission_dict = topk_to_submission_dict(top10, k=10)
         answer_dict = ground_truth_to_dict(splits["valid_label_lf"])
+        print_submission_item_concentration(
+            raw_submission_dict,
+            k=10,
+            label="Validation model-only submission",
+        )
         print(
             "Server Precision@10 (model only):",
             server_precision_at_k(raw_submission_dict, answer_dict, k=10),
